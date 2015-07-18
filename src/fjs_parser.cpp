@@ -124,7 +124,9 @@ void JSParser::invoke() {
 	// list of arguments.
 	while (this->expect(ident)) {
 		// Copy the variable.
-		arguments.add(frame->stack.pop()->val);
+		char* identName = frame->stack.pop()->val;
+		char* identVal = context->getVar(identName)->val->toString();
+		arguments.add(identVal);
 	}
 	this->accept(rparen);
 	
@@ -134,7 +136,7 @@ void JSParser::invoke() {
 	if (this->context->isJSDelegate(method)) {
 		// Invoke the delegate.
 		JSDelegate* delegate = (JSDelegate*)target;
-		delegate->invoke();
+		delegate->invoke(arguments);
 	} else {
 		// Invoke the js object.
 		Object* object = (Object*)target;
@@ -200,7 +202,7 @@ void JSParser::parse(List<Token*> tokens) {
 	this->program();
 }
 
-void JSParser::registerDelegate(char* identifier, void (*func)(List<Variable*>args)) {
+void JSParser::registerDelegate(char* identifier, void (*func)(List<char*>args)) {
 	this->context->registerDelegate(identifier, func);
 }
 

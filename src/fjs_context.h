@@ -12,7 +12,7 @@ class SystemContext {
 		Variable* getVar(char* identifier);
 		void setVar(char* identifier, char* val);
 		void setMethod(char* identifier, List<Token*> tokens);
-		void registerDelegate(char* identifier, void (*func)(List<Variable*> args));
+		void registerDelegate(char* identifier, void (*func)(List<char*> args));
 		
 		bool isJSDelegate(char* methodName);
 		void* getMethod(char* methodName);
@@ -38,7 +38,7 @@ void SystemContext::setVar(char* identifier, char* val) {
 	this->variables.add(newvar);
 }
 
-void SystemContext::registerDelegate(char* identifier, void (*func)(List<Variable*> args)) {
+void SystemContext::registerDelegate(char* identifier, void (*func)(List<char*> args)) {
 	JSDelegate* delegate = new JSDelegate(identifier, func);
 	this->delegates.add(delegate);
 }

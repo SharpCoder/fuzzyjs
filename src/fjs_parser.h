@@ -33,7 +33,7 @@ class JSParser {
 	public:
 		JSParser();
 		void parse(List<Token*> tokens);
-		void registerDelegate(char* identifier, void (*func)(List<Variable*>args));
+		void registerDelegate(char* identifier, void (*func)(List<char*>args));
 };
 
 #endif

@@ -21,14 +21,16 @@ List<Token*> tokenize(char* str) {
 		
 			// Skip empty strings.
 			if ( temp->size() > 0 ) {
-				// Otherwise, conver the string into a symbol and add it.
+				// Otherwise, convert the string into a symbol and add it.
 				prev = convert(prev, temp);
 				Token* token = new Token(prev, temp->toString());
-				result.add(token);
+				if (!processSymbol(prev, &result, code, &i))
+					result.add(token);
 			}
 			
 			// Clear stuff out.
 			temp->clear();
+			processSymbol(prev, &result, code, &i);
 			
 			// If the character is not whitespace and it's not known
 			// append it. Otherwise, if it's known, add to result.
@@ -38,7 +40,8 @@ List<Token*> tokenize(char* str) {
 				prev = s;
 				Token* token = new Token();
 				token->sym = prev; token->val = (new string(c))->toString();
-				result.add(token);
+				if (!processSymbol(prev, &result, code, &i))
+					result.add(token);
 			}
 		} else {
 			temp->append(c);
@@ -48,6 +51,47 @@ List<Token*> tokenize(char* str) {
 	// Add the script terminate token.
 	result.add(new Token(scriptendsym, (char*)"\0"));
 	return result;
+}
+
+bool processSymbol(Symbol s, List<Token*>* results, string* code, int* index) {
+	if ( s == multicommentsym ) {
+		(*results).add(doUntil(oddsym, multicommentsym, code, index));
+		return true;
+	} else if ( s == quotesym ) {
+		(*results).add(doUntil(stringsym, quotesym, code, index));
+		return true;
+	}
+	
+	return false;
+}
+
+Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
+	string* content = new string();
+	for ( int i = *index; i < code->size(); i++ ) {
+		char c = code->getAt(i);
+		char peek = '\0';
+		
+		if ( i + 1 < code->size() )
+			peek = code->getAt(i+1);
+		
+		// Check for a token.
+		string* current = new string(c);
+		if ( convert(oddsym, current) == target ) {
+			*index = i;
+			break;
+		}
+		
+		current->append(peek);
+		if ( convert(oddsym, current) == target ) {
+			*index = i + 1;
+			break;
+		}
+		
+		// Append.
+		content->append(c);
+	}
+	
+	return new Token(tokenType, content->toString());
 }
 
 bool isFinished(string* str, char next, Symbol nxt) {

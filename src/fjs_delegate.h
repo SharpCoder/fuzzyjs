@@ -6,27 +6,27 @@
 // The method delegate maps a c++ method to a javascript method.
 class JSDelegate {
 	private:
-		void (*ptr)(List<Variable*> args);
+		void (*ptr)(List<char*> args);
 		
 	public:
 		string* name;
 		JSDelegate();
-		JSDelegate(char* identifier, void (*func)(List<Variable*> args));
+		JSDelegate(char* identifier, void (*func)(List<char*> args));
 		void invoke(void);
-		void invoke(List<Variable*> args);		
+		void invoke(List<char*> args);		
 };
 
-JSDelegate::JSDelegate(char* identifier, void (*func)(List<Variable*> args)) {
+JSDelegate::JSDelegate(char* identifier, void (*func)(List<char*> args)) {
 	this->name = new string(identifier);
 	this->ptr = func;
 }
 
 void JSDelegate::invoke(void) {
-	List<Variable*> empty;
+	List<char*> empty;
 	this->ptr(empty);
 }
 
-void JSDelegate::invoke(List<Variable*> args) {
+void JSDelegate::invoke(List<char*> args) {
 	this->ptr(args);
 }
 

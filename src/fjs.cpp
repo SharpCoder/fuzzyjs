@@ -9,9 +9,9 @@
 #include "fjs.h"
 
 // Some glue functions, for testing.
-void js_printf(List<Variable*> args) {
+void js_printf(List<char*> args) {
 	if ( args.getLength() > 0 ) {
-		printf("[%s]\n", args.getAt(0)->val->toString());
+		printf("[%s]\n", args.getAt(0));
 	} else {
 		printf("Hello, world\n");
 	}
@@ -23,7 +23,7 @@ int main(void) {
 	parser->registerDelegate((char*)"printf", js_printf);
 	
 	// Parse the javascript
-	List<Token*> tokens = tokenize((char*)"var s = 10; printf(s);function doIt(){ printf(s); } doIt();");
+	List<Token*> tokens = tokenize((char*)"var s = 10; printf(s);function doIt(){ var r = 20; printf(r); } doIt();");
 	parser->parse(tokens);
 	
 	// Terminate program.

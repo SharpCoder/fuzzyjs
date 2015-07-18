@@ -4,7 +4,7 @@
 // These are all the symbols our parser will support.
 typedef enum { 
 	ident, number, methodsym, lparen, rparen, times, slash, plus, minus, eql, neq, 
-	lss, leq, gtr, geq, quotesym, semicolon, endsym, ifsym, 
+	lss, leq, gtr, geq, quotesym, semicolon, endsym, ifsym, stringsym,
 	whilesym, rbracket, functionsym, comma, varsym, lbracket, period,
 	member, oddsym, singlecommentsym, multicommentsym,
 	breaksym, casesym, catchsym, continuesym, defaultsym, deletesym, dosym,
