@@ -1,6 +1,9 @@
 #ifndef __FJS_PARSER_H_
 #define __FJS_PARSER_H_
 
+#define TRUE (char*)"true"
+#define FALSE (char*)"false"
+
 #include "fjs_helper.cpp"
 #include "fjs_string.h"
 #include "fjs_token.h"
@@ -25,6 +28,7 @@ class JSParser {
 		int expect(Symbol s);
 		void nextsym(void);
 		void block(void); 
+		void expression(void);
 		void assignment(void);
 		void invoke(void);
 		void function(void);

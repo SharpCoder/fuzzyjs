@@ -107,10 +107,59 @@ void JSParser::assignment() {
 	if (this->accept(eql)) {
 		// Identifier and it's value.
 		char* identifier = frame->stack.pop()->val;
-		char* value = frame->sym->val;
+		
+		if (accept(lparen)) expression();
+		else frame->stack.push(new Token(stringsym, frame->sym->val));
+		
+		char* value = frame->stack.pop()->val;
 		
 		// Do the logic!
 		this->context->setVar(identifier, value);
+	} else if (this->accept(lparen)) {
+		// Expression time.
+		char* identifier = frame->stack.pop()->val;
+		this->expression();
+		char* value = frame->stack.pop()->val;
+	}
+}
+
+void JSParser::expression() {
+	// Parse the expression.
+	Stack<bool> parens;
+	List<Token*> tokens;
+	
+	// (1 == 1)
+	while(!accept(rparen)){
+		if (accept(lparen)) {
+			expression();
+		} else if (expect(ident) || expect(stringsym)) {
+			// comparison.
+			string* left = new string(current->stack.pop()->val);
+			
+			// If this is a double equals.
+			if (accept(eql)) {
+				if (accept(eql)) {
+				
+					// Comparison
+					// Check for more branching.
+					if (accept(lparen)) expression();
+					
+					// Verify we have something here to work with.
+					if (expect(ident) || expect(stringsym)) {
+					
+						// If we do, get the right side and compare the two
+						// values.
+						string* right = new string(current->stack.pop()->val);
+						if (strcmp(right,left))
+							current->stack.push(new Token(stringsym, TRUE));
+						else
+							current->stack.push(new Token(stringsym, FALSE));
+					}
+				}
+			}
+		} else {
+			nextsym();
+		}
 	}
 }
 

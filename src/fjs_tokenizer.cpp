@@ -30,7 +30,6 @@ List<Token*> tokenize(char* str) {
 			
 			// Clear stuff out.
 			temp->clear();
-			processSymbol(prev, &result, code, &i);
 			
 			// If the character is not whitespace and it's not known
 			// append it. Otherwise, if it's known, add to result.
@@ -67,7 +66,7 @@ bool processSymbol(Symbol s, List<Token*>* results, string* code, int* index) {
 
 Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
 	string* content = new string();
-	for ( int i = *index; i < code->size(); i++ ) {
+	for ( int i = *index + 1; i < code->size(); i++ ) {
 		char c = code->getAt(i);
 		char peek = '\0';
 		
@@ -83,7 +82,7 @@ Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
 		
 		current->append(peek);
 		if ( convert(oddsym, current) == target ) {
-			*index = i + 1;
+			*index = i + 2;
 			break;
 		}
 		
