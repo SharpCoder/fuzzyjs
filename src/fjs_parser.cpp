@@ -129,7 +129,7 @@ void JSParser::expression() {
 	List<Token*> tokens;
 	
 	// (1 == 1)
-	while(!accept(rparen)){
+	while(!accept(rparen)) {
 		if (accept(lparen)) {
 			expression();
 		} else if (expect(ident) || expect(stringsym)) {
@@ -142,10 +142,14 @@ void JSParser::expression() {
 				
 					// Comparison
 					// Check for more branching.
-					if (accept(lparen)) expression();
+					bool branched = false;
+					if (accept(lparen)) {
+						expression();
+						branched = true;
+					}
 					
 					// Verify we have something here to work with.
-					if (expect(ident) || expect(stringsym)) {
+					if (branched || expect(ident) || expect(stringsym)) {
 					
 						// If we do, get the right side and compare the two
 						// values.
