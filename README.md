@@ -15,7 +15,8 @@ The following language features are currently supported (this list will be updat
 - c++ interop "delegates"
 - delegate invocation
 - evaluate simple expressions (pretty much only == is currently supported)
-- string concatination.
+- string concatenation.
+
 More to come!
 
 
