@@ -82,7 +82,7 @@ Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
 		
 		current->append(peek);
 		if ( convert(oddsym, current) == target ) {
-			*index = i + 2;
+			*index = i + 1;
 			break;
 		}
 		

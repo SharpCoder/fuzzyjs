@@ -32,6 +32,7 @@ class JSParser {
 		void assignment(void);
 		void invoke(void);
 		void function(void);
+		void comparison(void);
 		void program(void);
 		
 	public:

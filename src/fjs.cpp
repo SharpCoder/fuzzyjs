@@ -23,7 +23,7 @@ int main(void) {
 	parser->registerDelegate((char*)"printf", js_printf);
 	
 	// Parse the javascript
-	List<Token*> tokens = tokenize((char*)"var s = ('false'== (1 == 10)); printf(s);function doIt(){ var r = 20; printf(r); } doIt();");
+	List<Token*> tokens = tokenize((char*)"var s = ('false'== (1 == 10)); var a = 'trues' + ' things'; printf(a); printf(s);function doIt(){ var r = 20; printf(r); } doIt();");
 	
 	// Print some debug information
 	for ( int i = 0; i < tokens.getLength(); i++ ) {

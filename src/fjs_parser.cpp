@@ -108,18 +108,48 @@ void JSParser::assignment() {
 		// Identifier and it's value.
 		char* identifier = frame->stack.pop()->val;
 		
-		if (accept(lparen)) expression();
-		else frame->stack.push(new Token(stringsym, frame->sym->val));
+		// Check if this has an expression in it.
+		if (accept(lparen)) {
+			expression();
+		} else {
+			// Get the next identifier added to the stack, if applicable.
+			if (expect(ident) || expect(stringsym));
+		}
+				
+		// Pop the value from the stack.
+		string* value = new string(frame->stack.pop()->val);
 		
-		char* value = frame->stack.pop()->val;
+		// Check for any string concatination
+		if (accept(plus)) {
+			if (expect(ident) || expect(stringsym)) {
+				value->append(frame->stack.pop()->val);
+			}
+		}
 		
 		// Do the logic!
-		this->context->setVar(identifier, value);
-	} else if (this->accept(lparen)) {
-		// Expression time.
-		char* identifier = frame->stack.pop()->val;
-		this->expression();
-		char* value = frame->stack.pop()->val;
+		this->context->setVar(identifier, value->toString());
+	}
+}
+
+void JSParser::comparison() {
+	string* left = new string(current->stack.pop()->val);
+	// Comparison
+	// Check for more branching.
+	bool branched = false;
+	if (accept(lparen)) {
+		expression();
+		branched = true;
+	}
+	
+	// Verify we have something here to work with.
+	if (branched || expect(ident) || expect(stringsym)) {
+		// If we do, get the right side and compare the two
+		// values.
+		string* right = new string(current->stack.pop()->val);
+		if (strcmp(right,left))
+			current->stack.push(new Token(stringsym, TRUE));
+		else
+			current->stack.push(new Token(stringsym, FALSE));
 	}
 }
 
@@ -133,32 +163,10 @@ void JSParser::expression() {
 		if (accept(lparen)) {
 			expression();
 		} else if (expect(ident) || expect(stringsym)) {
-			// comparison.
-			string* left = new string(current->stack.pop()->val);
-			
 			// If this is a double equals.
 			if (accept(eql)) {
 				if (accept(eql)) {
-				
-					// Comparison
-					// Check for more branching.
-					bool branched = false;
-					if (accept(lparen)) {
-						expression();
-						branched = true;
-					}
-					
-					// Verify we have something here to work with.
-					if (branched || expect(ident) || expect(stringsym)) {
-					
-						// If we do, get the right side and compare the two
-						// values.
-						string* right = new string(current->stack.pop()->val);
-						if (strcmp(right,left))
-							current->stack.push(new Token(stringsym, TRUE));
-						else
-							current->stack.push(new Token(stringsym, FALSE));
-					}
+					comparison();					
 				}
 			}
 		} else {
