@@ -5,18 +5,35 @@
 #include "fjs_string.h"
 #include "fjs_token.h"
 #include "fjs_var.h"
+#include "fjs_context.h"
+#include "fjs_object.h"
+#include "fjs_delegate.h"
+#include "fjs_stackframe.h"
 
-// Some helper methods.
-void addVar(char* identifier, char* val);
-char* getVar(char* identifier);
+class JSParser {
+	private:
+		SystemContext* context;
+		Stack<StackFrame*> frames;
+		StackFrame* current;
 
-int accept(Token* s);
-void nextsym(void);
-void block(void); 
-void assignment(void);
-void invoke(void);
-void program(void);
-void parse(List<Token*> symbols);
-
+		 // Method for creating a new stack frame.
+		void allocate(List<Token*> tokens);
+		StackFrame* getFrame(void);
+		
+		// Methods for parsing.
+		int accept(Symbol s);
+		int expect(Symbol s);
+		void nextsym(void);
+		void block(void); 
+		void assignment(void);
+		void invoke(void);
+		void function(void);
+		void program(void);
+		
+	public:
+		JSParser();
+		void parse(List<Token*> tokens);
+		void registerDelegate(char* identifier, void (*func)(List<Variable*>args));
+};
 
 #endif

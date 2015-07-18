@@ -1,26 +1,32 @@
+// NOTE: These are just to support
+// printf() (only for debugging, not needed in actual program).
+// malloc()
+// and the new keyword.
 #include <stdio.h>
 #include <stdlib.h>
+
+// Include the primary include.
 #include "fjs.h"
 
-const char* revert(Symbol s) {
-	if ( s == varsym ) return "var ";
-	else if ( s == oddsym || s == ident ) return "Identifier";
-	else if ( s == eql ) return "=";
-	else if ( s == semicolon ) return "; ";
-	else if ( s == lparen ) return "(";
-	else if ( s == rparen ) return ")";
-	return "";
+// Some glue functions, for testing.
+void js_printf(List<Variable*> args) {
+	if ( args.getLength() > 0 ) {
+		printf("[%s]\n", args.getAt(0)->val->toString());
+	} else {
+		printf("Hello, world\n");
+	}
 }
 
 int main(void) {
 	
-	List<Token*> tokens = tokenize((char*)"var s = 10; printf(s);");
-	parse(tokens);
-	for ( int i = 0; i < tokens.getLength(); i++ ) {
-		Token* token = tokens.getAt(i);
-		printf("%s", token->val);
-	}
+	JSParser* parser = new JSParser();
+	parser->registerDelegate((char*)"printf", js_printf);
 	
+	// Parse the javascript
+	List<Token*> tokens = tokenize((char*)"var s = 10; printf(s);function doIt(){ printf(s); } doIt();");
+	parser->parse(tokens);
+	
+	// Terminate program.
 	printf("\n");
 	return 0;
 }

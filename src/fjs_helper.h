@@ -47,7 +47,11 @@ class Stack {
 		iterator<T>* top;
 		int length;
 		
-	public:			
+	public:	
+		Stack() {
+			this->length = 0;
+		}
+		
 		void push(T val) {
 			iterator<T>* next = new iterator<T>( this->top, val );
 			this->top = next;
