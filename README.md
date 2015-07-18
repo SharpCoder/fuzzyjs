@@ -14,7 +14,7 @@ The following language features are currently supported (this list will be updat
 - function declaration
 - c++ interop "delegates"
 - delegate invocation
-- evaluate simple expressions
+- evaluate simple expressions (pretty much only == is currently supported)
 
 More to come!
 
