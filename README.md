@@ -6,3 +6,16 @@ I want to utilize javascript in a baremetal project of mine. As such, I don't ha
 
 ## How do I use this?
 Look at fjs.cpp for a small demonstration, but essentially just include "fjs.h" and then you have access to the JSParser object. Instantiate it and call the _parse_ method which takes a char* of code and away you go! There are also methods to register c++ functions for use in javascript (per the demo).
+
+## What is supported?
+The following language features are currently supported (this list will be updated as I add more stuff).
+
+- variable assignment
+- function declaration
+- c++ interop "delegates"
+- delegate invocation
+- evaluate simple expressions
+
+More to come!
+
+
