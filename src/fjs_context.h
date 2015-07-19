@@ -11,15 +11,15 @@ class SystemContext {
 		List<Object*> methods;
 		Variable* getVar(char* identifier);
 		void setVar(char* identifier, char* val);
-		void setMethod(char* identifier, List<Token*> tokens);
+		void setMethod(char* identifier, List<Variable*> args, List<Token*> tokens);
 		void registerDelegate(char* identifier, void (*func)(List<char*> args));
 		
 		bool isJSDelegate(char* methodName);
 		void* getMethod(char* methodName);
 };
 
-void SystemContext::setMethod(char* identifier, List<Token*> tokens) {
-	Object* object = new Object(identifier, tokens);
+void SystemContext::setMethod(char* identifier, List<Variable*> args, List<Token*> tokens) {
+	Object* object = new Object(identifier, args, tokens);
 	this->methods.add(object);
 }
 

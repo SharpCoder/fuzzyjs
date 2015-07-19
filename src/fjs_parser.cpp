@@ -11,14 +11,19 @@ StackFrame* JSParser::getFrame() {
 	// Always use the top item in the stack.
 	if ( this->frames.getLength() > 0 ) {
 		this->current = frames.pop();
+		
+	}
+	
+	if (this->current->index < this->current->symbols.getLength()) {
 		frames.push(this->current);
 	}
 	
 	// If the current item is NULL or the current stackframe is empty
-	if (this->current == (StackFrame*)NULL || this->current->index > this->current->symbols.getLength()) {
+	if (this->current == (StackFrame*)NULL ) {
 		// If we have a new frame, get it. Otherwise return null.
 		if (this->frames.getLength() > 0) {
 			this->current = frames.pop();
+			frames.push(this->current);
 		} else {
 			this->current = (StackFrame*)NULL;
 		}
@@ -57,6 +62,7 @@ int JSParser::expect(Symbol s) {
 		this->nextsym();
 		return 1;
 	}
+	
 	return 0;
 }
 
@@ -64,9 +70,10 @@ void JSParser::nextsym() {
 	StackFrame* frame = this->getFrame();
 	if ( frame == (StackFrame*)NULL) return;
 	
-	if ( frame->index < frame->symbols.getLength() ) {
-		frame->sym = frame->symbols.getAt(frame->index++);
+	if ( current->index < current->symbols.getLength() ) {
+		frame->sym = current->symbols.getAt(current->index++);
 	} else {
+		frame->index++;
 		this->getFrame();
 	}
 }
@@ -74,6 +81,7 @@ void JSParser::nextsym() {
 void JSParser::block() {
 	if ( this->accept(scriptstartsym) ) {
 		// Start
+		
 	} else if (this->accept(varsym)) {
 		// Get the identifier.
 		if (this->expect(ident)) {
@@ -82,18 +90,17 @@ void JSParser::block() {
 		}
 	} else if (this->expect(ident)) {
 		
-		// Functions
-		if (this->accept(lparen)){
-			// Method call?
-			this->invoke();
-		}
+		// Method call?
+		this->invoke();
 	} else if (this->expect(semicolon)) {
 		// Line termination.
 		
 	} else if (this->accept(functionsym)) {
 		if (this->expect(ident)) {
 			this->function();
-		}
+		} 
+	} else if (this->accept(lparen)) {
+		this->expression();
 	} else {
 		// Compiler error?
 		this->nextsym();
@@ -113,21 +120,15 @@ void JSParser::assignment() {
 			expression();
 		} else {
 			// Get the next identifier added to the stack, if applicable.
-			if (expect(ident) || expect(stringsym));
-		}
-				
-		// Pop the value from the stack.
-		string* value = new string(frame->stack.pop()->val);
-		
-		// Check for any string concatination
-		if (accept(plus)) {
 			if (expect(ident) || expect(stringsym)) {
-				value->append(frame->stack.pop()->val);
+				getString();
 			}
 		}
+	
+		char* val = frame->stack.pop()->val;
 		
 		// Do the logic!
-		this->context->setVar(identifier, value->toString());
+		this->context->setVar(identifier, val);
 	}
 }
 
@@ -175,20 +176,54 @@ void JSParser::expression() {
 	}
 }
 
+void JSParser::getString() {
+	// Pop the value from the stack.
+	StackFrame* frame = getFrame();
+	if (frame == (StackFrame*)NULL) return;
+	if (frame->stack.getLength() == 0 ) return;
+	
+	string* value = new string(frame->stack.pop()->val);
+	
+	// Check for any string concatination
+	if (accept(plus)) {
+		if (expect(ident) || expect(stringsym)) {
+			value->append(frame->stack.pop()->val);
+		}
+	}
+	
+	frame->stack.push(new Token(stringsym, value->toString()));
+}
+
 void JSParser::invoke() {
 	StackFrame* frame = this->getFrame();
 	if ( frame == (StackFrame*)NULL) return;
-	
 	char* method = frame->stack.pop()->val;
 	List<char*> arguments;
+	
+	accept(lparen);
+	
 	// While we're not at the rparam, create a 
 	// list of arguments.
-	while (this->expect(ident)) {
-		// Copy the variable.
-		char* identName = frame->stack.pop()->val;
-		char* identVal = context->getVar(identName)->val->toString();
-		arguments.add(identVal);
+	while (true) {
+		if (this->expect(ident)) {
+			// Copy the variable.
+			char* identName = frame->stack.pop()->val;
+			char* identVal = context->getVar(identName)->val->toString();
+			frame->stack.push(new Token(stringsym, identVal));
+			getString();
+			
+			arguments.add(frame->stack.pop()->val);
+		} else if (this->expect(stringsym)) {
+			getString();
+			arguments.add(frame->stack.pop()->val);
+		} else if (this->accept(comma)) {
+			continue;
+		} else {
+			break;
+		}
+		
 	}
+	
 	this->accept(rparen);
 	
 	// Do the logic!
@@ -201,7 +236,20 @@ void JSParser::invoke() {
 	} else {
 		// Invoke the js object.
 		Object* object = (Object*)target;
-		this->allocate(object->getTokens());
+		
+		// Update all the arguments.
+		for ( int i = 0; i < arguments.getLength(); i++ ) {
+			if ( i < object->arguments.getLength() ) {
+				Variable* var = object->arguments.getAt(i);
+				var->val = new string(arguments.getAt(i));
+			}
+		}
+		
+		this->allocate(object->tokens);
+		for ( int i = 0; i < object->arguments.getLength(); i++ ) {
+			Variable* var = object->arguments.getAt(i);
+			context->setVar(var->name->toString(), var->val->toString());
+		}
 	}
 }
 
@@ -211,11 +259,22 @@ void JSParser::function() {
 	
 	string* name = new string(frame->stack.pop()->val);
 	List<Token*> methodTokens;
+	List<Variable*> args;
 	Stack<bool> parens;
 	
-	// TODO: Implement arguments...
 	this->accept(lparen);
-	this->accept(rparen);
+	
+	// Collect all the parameter names for the argument list.
+	while(!this->accept(rparen)){
+		if (expect(ident)) {
+			Variable* newvar = new Variable(frame->stack.pop()->val, (char*)"\0");
+			args.add(newvar);
+		} else if (accept(comma)) {
+			continue;
+		} else {
+			break;
+		}
+	}
 	
 	// If there's a left bracket where we expect...
 	if (this->accept(lbracket)) {
@@ -239,7 +298,7 @@ void JSParser::function() {
 		}
 		
 		// Create the object in scope.
-		this->context->setMethod(name->toString(), methodTokens);
+		this->context->setMethod(name->toString(), args, methodTokens);
 	}
 }
 
@@ -251,10 +310,13 @@ void JSParser::program() {
 		// Verify the frame still has work to do.
 		if ( this->current == (StackFrame*)NULL )
 			break;
-			
-		if ( this->current->index >= this->current->symbols.getLength() )
-			break;
 		
+		if ( this->current->index >= this->current->symbols.getLength() ) {
+			this->current = getFrame();
+			if ( current == (StackFrame*)NULL || current->index > current->symbols.getLength() ) {
+				break;
+			}
+		} 
 	} while(true);
 }
 

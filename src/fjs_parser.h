@@ -33,6 +33,7 @@ class JSParser {
 		void invoke(void);
 		void function(void);
 		void comparison(void);
+		void getString(void);
 		void program(void);
 		
 	public:

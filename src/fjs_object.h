@@ -11,23 +11,23 @@ class Object {
 		// These are the tokens that make up the function this
 		// object represents. I guess.
 		List<Token*> tokens;
-		List<Object> methods;
+		List<Variable*> arguments;
 		
 		// The name of this object.
 		string* name;
 		
 		// Constructors.
 		Object() { }
-		Object(char* identifier) {
-			this->name = new string(identifier);
-		}
+		
 		Object(char* identifier, List<Token*> methodTokens) {
 			this->name = new string(identifier);
 			this->tokens = methodTokens;
 		}
 		
-		List<Token*> getTokens() {
-			return this->tokens;
+		Object(char* identifier, List<Variable*> args, List<Token*> methodTokens) {
+			this->name = new string(identifier);
+			this->arguments = args;
+			this->tokens = methodTokens;
 		}
 };
 
