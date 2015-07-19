@@ -16,6 +16,8 @@ The following language features are currently supported (this list will be updat
 - delegate invocation
 - evaluate simple expressions (pretty much only == is currently supported)
 - string concatenation.
+- javascript functions (not prototypes, yet).
+- the return keyword!
 
 More to come!
 
