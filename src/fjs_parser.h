@@ -34,6 +34,7 @@ class JSParser {
 		void function(void);
 		void comparison(void);
 		void getString(void);
+		void doreturn(void);
 		void program(void);
 		
 	public:

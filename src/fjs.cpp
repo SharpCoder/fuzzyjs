@@ -32,6 +32,8 @@ int main(void) {
 	code->append("doIt();");
 	code->append("function myFunc ( first, second ){ printf(first + second); }");
 	code->append("myFunc('starcraft ', 'love');");
+	code->append("function addLove() { return 'love'; }");
+	code->append("var t = (addLove() + 'craft'); printf(t);");
 	
 	List<Token*> tokens = tokenize(code->toString());
 	

@@ -36,6 +36,7 @@ StackFrame* JSParser::getFrame() {
 void JSParser::allocate(List<Token*> tokens) {
 	StackFrame* frame = new StackFrame(tokens);
 	this->frames.push(frame);
+	this->current = frame;
 }
 
 int JSParser::accept(Symbol s) {
@@ -54,8 +55,8 @@ int JSParser::accept(Symbol s) {
 
 int JSParser::expect(Symbol s) {
 	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return 0;	
-	if (frame->sym == (Token*)NULL) return 0;
+	if ( frame == (StackFrame*)NULL ) return 0;	
+	if ( frame->sym == (Token*)NULL ) return 0;
 	
 	if ( s == frame->sym->sym ) {
 		frame->stack.push(frame->sym);
@@ -78,11 +79,60 @@ void JSParser::nextsym() {
 	}
 }
 
+void JSParser::doreturn() {
+	char* value;
+	bool assigned = false;
+	getFrame();
+	
+	// If there's a string here, then let's process it...
+	if (expect(stringsym)) {
+	
+		// Get the string we found and see if there are more strings
+		// according to the getString() logic (which searches for contact
+		// operations and such).
+		string* val = new string(current->stack.pop()->val);
+		current->stack.push(new Token(stringsym, val->toString()));
+		getString();
+		
+		// If there were more strings, then concat them.
+		if ( current->stack.getLength() > 0 )
+			val->append(current->stack.pop()->val);
+		
+		// Return the value of all this.
+		value = val->toString();
+		assigned = true;
+	} else if (expect(ident)) {
+		char* name = current->stack.pop()->val;
+		value = context->getVar(name)->val->toString();
+		assigned = true;
+	}
+		
+	// Pop the current frame off.
+	if ( assigned ) {
+		// Pop this frame.
+		frames.pop();
+		
+		// Load the old one.
+		getFrame();
+		
+		// Set the thing.
+		current->stack.push(new Token(stringsym, value));
+		
+	}
+	
+}
+
+
 void JSParser::block() {
+	
+	// Refresh the current stackframe pointer.
+	getFrame();
+	
 	if ( this->accept(scriptstartsym) ) {
 		// Start
 		
 	} else if (this->accept(varsym)) {
+	
 		// Get the identifier.
 		if (this->expect(ident)) {
 			// We have a variable name!
@@ -92,6 +142,7 @@ void JSParser::block() {
 		
 		// Method call?
 		this->invoke();
+		
 	} else if (this->expect(semicolon)) {
 		// Line termination.
 		
@@ -99,6 +150,9 @@ void JSParser::block() {
 		if (this->expect(ident)) {
 			this->function();
 		} 
+	} else if (accept(returnsym)) {
+		doreturn();
+		return;
 	} else if (this->accept(lparen)) {
 		this->expression();
 	} else {
@@ -164,6 +218,19 @@ void JSParser::expression() {
 		if (accept(lparen)) {
 			expression();
 		} else if (expect(ident) || expect(stringsym)) {
+			
+			char* name = current->stack.pop()->val;
+			
+			// Check if it's a method.
+			if (this->context->getMethod(name) != (void*)NULL ) {
+				Token* token = current->stack.pop();
+				current->stack.push(new Token(ident, name));
+				invoke();
+				getString();
+			} else {
+				current->stack.push(new Token(stringsym, name));
+			}
+			
 			// If this is a double equals.
 			if (accept(eql)) {
 				if (accept(eql)) {
@@ -180,14 +247,22 @@ void JSParser::getString() {
 	// Pop the value from the stack.
 	StackFrame* frame = getFrame();
 	if (frame == (StackFrame*)NULL) return;
-	if (frame->stack.getLength() == 0 ) return;
+	if (frame->stack.getLength() <= 0 ) return;
 	
 	string* value = new string(frame->stack.pop()->val);
 	
 	// Check for any string concatination
 	if (accept(plus)) {
-		if (expect(ident) || expect(stringsym)) {
-			value->append(frame->stack.pop()->val);
+		getFrame();
+		if (expect(stringsym)) {
+			if ( frame->stack.getLength() > 0 ) 
+				value->append(frame->stack.pop()->val);
+			
+		} else if (expect(ident)) {
+			if ( frame->stack.getLength() > 0 ) {
+				char* name = frame->stack.pop()->val;
+				value->append(context->getVar(name)->val->toString());
+			}
 		}
 	}
 	
@@ -199,7 +274,6 @@ void JSParser::invoke() {
 	if ( frame == (StackFrame*)NULL) return;
 	char* method = frame->stack.pop()->val;
 	List<char*> arguments;
-	
 	accept(lparen);
 	
 	// While we're not at the rparam, create a 
@@ -244,13 +318,18 @@ void JSParser::invoke() {
 				var->val = new string(arguments.getAt(i));
 			}
 		}
-		
-		this->allocate(object->tokens);
+
+		this->allocate(object->tokens);		
 		for ( int i = 0; i < object->arguments.getLength(); i++ ) {
 			Variable* var = object->arguments.getAt(i);
 			context->setVar(var->name->toString(), var->val->toString());
 		}
+		
+		//printf("There are %d tokens\n", current->symbols.getLength());
+		nextsym();
+		block();
 	}
+	
 }
 
 void JSParser::function() {
