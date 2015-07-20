@@ -36,14 +36,13 @@ int main(void) {
 	code->append("var t = (addLove() + 'craft'); printf(t);");
 	
 	List<Token*> tokens = tokenize(code->toString());
-	
 	// Print some debug information
 	for ( int i = 0; i < tokens.getLength(); i++ ) {
 		printf(tokens.getAt(i)->val);
 	}
 	
 	printf("\n\n");
-	parser->parse(tokens);
+	parser->parse(code->toString());
 	
 	// Terminate program.
 	printf("\n");

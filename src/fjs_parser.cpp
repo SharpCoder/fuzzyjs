@@ -399,7 +399,8 @@ void JSParser::program() {
 	} while(true);
 }
 
-void JSParser::parse(List<Token*> tokens) {
+void JSParser::parse(char* code) {
+	List<Token*> tokens = tokenize(code);
 	this->allocate(tokens);
 	this->program();
 }

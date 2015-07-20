@@ -4,6 +4,7 @@
 #define TRUE (char*)"true"
 #define FALSE (char*)"false"
 
+#include "fjs_tokenizer.cpp"
 #include "fjs_helper.cpp"
 #include "fjs_string.h"
 #include "fjs_token.h"
@@ -39,7 +40,7 @@ class JSParser {
 		
 	public:
 		JSParser();
-		void parse(List<Token*> tokens);
+		void parse(char* code);
 		void registerDelegate(char* identifier, void (*func)(List<char*>args));
 };
 
