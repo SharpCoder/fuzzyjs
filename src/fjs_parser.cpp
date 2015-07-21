@@ -224,24 +224,85 @@ void JSParser::assignment() {
 				char* objectName = frame->stack.pop()->val;
 				Object* instance = new Object(identifier, (char*)"\0");
 				Object* obj = context->getVar(objectName);
+				
 				if ( obj != (Object*)NULL ) {
 					instance->copy(obj);
 				}
-				context->variables.add(instance);
+				
+				context->addVar(instance);
 				context->scope = instance;
+				
+				// Call the constructor.
+				if ( obj->tokens.getLength() > 0 ) {
+					current->stack.push(new Token(ident, instance->name->toString()));
+					invoke();
+				}
 			}
 			return;
-		} else {
-			// Get the next identifier added to the stack, if applicable.
-			if (expect(ident) || expect(stringsym)) {
+		} else if (expect(number)) {
+			char* value = frame->stack.pop()->val;
+			frame->stack.push(new Token(stringsym, value));
+			
+			int output = 0;
+			if ( parseInt(new string(value), &output)) {
+				maths();
+			} else {
 				getString();
 			}
+		} else if (expect(stringsym) || expect(ident)) {
+			// Get the next identifier added to the stack, if applicable.
+			getString();
 		}
 	
 		char* val = frame->stack.pop()->val;
 		
 		// Do the logic!
 		this->context->setVar(identifier, val);
+	}
+}
+
+void JSParser::maths() {
+	int value = 0;
+	char* left = current->stack.pop()->val;
+	if ( parseInt(new string(left), &value) ) {
+		Token* token = (Token*)NULL;
+
+		
+		if (expect(plus) || expect(minus) || expect(times)) {
+			token = current->stack.pop();
+			int rightVal = 0;
+			
+			// If we're adding or subtracting a number...
+			if (expect(lparen)) {
+				// If we get here, it's an order of operations thing.
+				expression();
+				// We need to handle this properly...
+			}
+			
+			if (expect(number)) {
+				char* right = current->stack.pop()->val;
+				if (parseInt(new string(right), &rightVal)) {		
+					switch(token->sym) {
+						case plus:
+							value += rightVal;
+						break;
+						case minus:
+							value -= rightVal;
+						break;
+						case times:
+							value *= rightVal;
+						break;
+					}
+				}
+			}
+		}
+	}
+	
+	current->stack.push(new Token(number, itoa(value)));
+	if (current->sym->sym == plus || current->sym->sym == minus || current->sym->sym == times )
+		maths();
+	if (accept(lparen)) {
+		expression();
 	}
 }
 
@@ -296,6 +357,8 @@ void JSParser::expression() {
 					comparison();					
 				}
 			}
+		} else if (expect(number)) {
+			maths();
 		} else {
 			nextsym();
 		}
@@ -335,6 +398,8 @@ void JSParser::invoke() {
 	
 	List<Object*> methods;
 	accept(lparen);
+	char fn_index[] = { '1','2','3','4','5','6','7','8','9' };
+	int index = 0;
 	
 	// While we're not at the rparam, create a 
 	// list of arguments.
@@ -364,10 +429,13 @@ void JSParser::invoke() {
 			methods.add(new Object((char*)"\0", frame->stack.pop()->val));
 		} else if (accept(functionsym)) {
 			// Create a temp variable to store the function
-			frame->stack.push(new Token(ident, (char*)"__temp"));
+			string* temp = new string("__temp");
+			temp->append(fn_index[index++]);
+			
+			frame->stack.push(new Token(ident, temp->toString()));
 			function();
 			// Add it
-			methods.add((Object*)context->getMethod((char*)"__temp"));
+			methods.add((Object*)context->getMethod(temp->toString()));
 			
 		} else if (this->accept(comma)) {
 			continue;
@@ -469,7 +537,8 @@ void JSParser::function() {
 			if ( context->scope != (Object*)NULL ) {
 				context->setMethod(name->toString(), args, methodTokens);
 			} else {
-				context->variables.add(object);
+				// Update any old references if applicable..
+				context->addVar(object);
 			}
 		} else {
 			// Otherwise, assign it to the global scope.
@@ -504,7 +573,7 @@ void JSParser::parse(char* code) {
 	this->program();
 }
 
-void JSParser::registerDelegate(char* identifier, void (*func)(List<char*>args)) {
+void JSParser::registerDelegate(const char* identifier, void (*func)(List<char*>args)) {
 	this->context->registerDelegate(identifier, func);
 }
 

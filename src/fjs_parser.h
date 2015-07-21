@@ -36,12 +36,13 @@ class JSParser {
 		void membercall(void);
 		void getString(void);
 		void doreturn(void);
+		void maths(void);
 		void program(void);
 		
 	public:
 		JSParser();
 		void parse(char* code);
-		void registerDelegate(char* identifier, void (*func)(List<char*>args));
+		void registerDelegate(const char* identifier, void (*func)(List<char*>args));
 };
 
 #endif

@@ -11,9 +11,10 @@ class SystemContext {
 		List<Object*> methods;
 		Object* scope;
 		Object* getVar(char* identifier);
+		void addVar(Object* var);
 		void setVar(char* identifier, char* val);
 		void setMethod(char* identifier, List<char*> args, List<Token*> tokens);
-		void registerDelegate(char* identifier, void (*func)(List<char*> args));
+		void registerDelegate(const char* identifier, void (*func)(List<char*> args));
 		void setScope(Object* scope);		
 		void setScope(char* scope);
 		void resetScope(void);
@@ -21,6 +22,15 @@ class SystemContext {
 		bool isJSDelegate(char* methodName);
 		void* getMethod(char* methodName);
 };
+
+void SystemContext::addVar(Object* var) {
+	if ( var == (Object*)NULL ) return;
+	Object* old = this->getVar(var->name->toString());
+	if ( old != (Object*)NULL )
+		*old = *var;
+	else
+		this->variables.add(var);
+}
 
 void SystemContext::setScope(char* member) {
 	// Update scope.
@@ -104,8 +114,8 @@ void SystemContext::setVar(char* identifier, char* val) {
 		this->variables.add(newvar);
 }
 
-void SystemContext::registerDelegate(char* identifier, void (*func)(List<char*> args)) {
-	JSDelegate* delegate = new JSDelegate(identifier, func);
+void SystemContext::registerDelegate(const char* identifier, void (*func)(List<char*> args)) {
+	JSDelegate* delegate = new JSDelegate((char*)identifier, func);
 	this->delegates.add(delegate);
 }
 

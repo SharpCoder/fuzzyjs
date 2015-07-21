@@ -46,6 +46,13 @@ class Object {
 		}
 		
 		void addMember(Object* member) {
+			for ( int i = 0; i < this->members.getLength(); i++ ) {
+				Object* m = this->members.getAt(i);
+				if ( strcmp(m->name, member->name) ) {
+					*m = *member;
+					return;
+				}
+			}
 			this->members.add(member);
 		}
 		

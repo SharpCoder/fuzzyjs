@@ -33,9 +33,9 @@ List<Token*> tokenize(char* str) {
 			
 			// If the character is not whitespace and it's not known
 			// append it. Otherwise, if it's known, add to result.
-			if ( c != ' ' && (s == ident || s == member) ) {
+			if ( c != ' ' && (s == ident || s == member || s == number) ) {
 				temp->append(c);			
-			} else if ( s != ident && s != member ) {
+			} else if ( s != ident && s != member && s != number) {
 				prev = s;
 				Token* token = new Token();
 				token->sym = prev; token->val = (new string(c))->toString();
@@ -97,7 +97,7 @@ Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
 bool isFinished(string* str, char next, Symbol nxt) {
 	if ( next == ' ' ) return true;
 	else if ( next == '\n' ) return true;
-	else if ( nxt != ident && nxt != member ) return true;
+	else if ( nxt != ident && nxt != member && nxt != number ) return true;
 	
 	return false;
 }
@@ -150,7 +150,9 @@ Symbol convert(Symbol prev, string* str) {
 	else if ( str->equals("prototype") ) return prototypesym;
 	else if ( str->equals("call") && prev == period ) return callsym;
 	
+	int value = 0;
 	if ( prev == period ) return member;
+	if (parseInt(str, &value)) return number;
 	
 	return ident;
 }

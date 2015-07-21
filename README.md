@@ -21,6 +21,7 @@ The following language features are currently supported (this list will be updat
 - object creation via: prototypes
 - object instantiation (minus the constructor stuff)
 - anonymous functions as parameters
+- basic math: plus, minus, multiply (division is a different beast that I will implement later)
 
 More to come!
 

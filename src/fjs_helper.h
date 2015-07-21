@@ -192,4 +192,67 @@ public:
 	}
 };
 
+int pow(int base, int power) {
+	if ( power <= 1 ) return 1;
+	int result = 1;
+	for ( int i = 0; i < power - 1; i++ ) {
+		result *= base;
+	}
+	return result;
+}
+
+char* itoa(uint32 number) {
+	char digits = 0;
+	do { } while ( digits < 10 && (number / pow(10, (int)digits++)) != 0 );
+
+	char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+	char* res = (char*)malloc((digits+1) * sizeof(char));
+	res[digits] = '\0';
+	int base = 0;
+
+	// Iterate over the digits;
+	for ( int i = digits - 1; i > 1; i-- ) {
+
+		int index;
+		if ( i == 0 )
+			index = number - base;
+		else
+			index = (number - base) / pow(10,i-1);
+		
+		if ( index < 10 && index >= 0)
+			res[digits - i - 1] = map[index];
+			
+		if ( i == 0 ) break;
+		base += index * pow(10,i-1);
+	}
+
+	// Return the result.
+	return res;
+}
+
+bool parseInt(string* str, int* result) {
+	*result = 0;
+	char map[] = { '0','1','2','3','4','5','6','7','8','9' };
+	int place = 0, index = 0, mapIndex = 0;
+	
+	for ( ; index < str->size() - 1; index++ ) {
+		place = pow(10, (str->size() - index - 1));
+		char c = str->getAt(index);
+		mapIndex = -1;
+		for ( int r = 0; r < 10; r++ ) {
+			if ( c == map[r] ) {
+				mapIndex = r;
+				break;
+			 }
+		}
+		if ( mapIndex == -1 ) {
+			return false;
+		}
+		
+		*result += (mapIndex * place);
+	}
+	
+	return true;
+}
+
 #endif

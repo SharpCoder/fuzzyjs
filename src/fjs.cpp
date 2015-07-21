@@ -18,16 +18,16 @@ void js_printf(List<char*> args) {
 }
 
 int main(void) {
-	
+		
 	JSParser* parser = new JSParser();
-	parser->registerDelegate((char*)"printf", js_printf);
+	parser->registerDelegate("printf", js_printf);
 	
 	// Parse the javascript
 	string* code = new string();
-	code->append("var s = ('false' == (1 == 10));");
+	code->append("var s = ('false' == ('1' == '10'));");
 	code->append("var a = 'hello, ' + 'world!';");
 	code->append("printf(a); printf(s);");
-	code->append("function doIt(){ var r = 20; printf(r); }");
+	code->append("function doIt(){ var r = 20 + 1 + 5 + 30 - (6*2); printf(r); }");
 	code->append("doIt();");
 	code->append("doIt();");
 	code->append("function myFunc ( first, second ){ printf(first + second); }");
@@ -38,11 +38,11 @@ int main(void) {
 	code->append("obj.prototype.method = function(i){ printf('method' + i); };");
 	code->append("var instance = new obj();");
 	code->append("var other = new obj();");
-	code->append("instance.method('1');");
-	code->append("other.method('2');");
-	code->append("function invoke(callback) { printf('in function'); callback.call(); }");
+	code->append("instance.method('a12');");
+	code->append("other.method('a2a');");
+	code->append("function invoke(callback, b) { printf('in function '); callback.call(); b.call(); }");
 	code->append("function cd() { printf('callback!'); }");
-	code->append("invoke(function() { printf('wat wat'); });");
+	code->append("invoke(function() { printf('wat wat'); }, function(){ printf('other'); });");
 	
 	List<Token*> tokens = tokenize(code->toString());
 	// Print some debug information
