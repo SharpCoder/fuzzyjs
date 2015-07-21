@@ -62,6 +62,15 @@ void SystemContext::setMethod(char* identifier, List<char*> args, List<Token*> t
 			}
 		}
 	} else {
+		// Check for existing method.
+		for ( int i = 0; i < this->methods.getLength(); i++ ) {
+			if ( strcmp(this->methods.getAt(i)->name, object->name)) {
+				Object* method = this->methods.getAt(i);
+				*method = *object;
+				return;
+			}
+		}
+	
 		this->methods.add(object);
 	}
 }
@@ -85,8 +94,14 @@ Object* SystemContext::getVar(char* identifier) {
 }
 
 void SystemContext::setVar(char* identifier, char* val) {
+	Object* oldvar = getVar(identifier);
 	Object* newvar = new Object(identifier, val);
-	this->variables.add(newvar);
+	
+	// Update old references, if applicable.
+	if (oldvar != (Object*)NULL)
+		*oldvar = *newvar;
+	else
+		this->variables.add(newvar);
 }
 
 void SystemContext::registerDelegate(char* identifier, void (*func)(List<char*> args)) {
@@ -126,6 +141,16 @@ void* SystemContext::getMethod(char* name) {
 		Object* object = this->methods.getAt(i);
 		if ( strcmp(object->name, methodName))
 			return (void*)object;
+	}
+	
+	
+	// Next, look at variables.
+	for (int i =0; i < this->variables.getLength(); i++ ) {
+		Object* object = this->variables.getAt(i);
+		if ( strcmp(object->name, methodName)) {
+			if ( object->tokens.getLength() > 0 )
+				return (void*)object;
+		}
 	}
 	
 	return (void*)NULL;

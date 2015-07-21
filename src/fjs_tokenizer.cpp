@@ -148,6 +148,7 @@ Symbol convert(Symbol prev, string* str) {
 	else if ( str->equals("void") ) return voidsym;
 	else if ( str->equals("with") ) return withsym;
 	else if ( str->equals("prototype") ) return prototypesym;
+	else if ( str->equals("call") && prev == period ) return callsym;
 	
 	if ( prev == period ) return member;
 	

@@ -148,6 +148,10 @@ void JSParser::membercall() {
 		if ( accept(period)) {
 			membercall();
 		}
+	} else if ( accept(callsym)) {
+		char* methodName = frame->stack.pop()->val;
+		frame->stack.push(new Token(ident, methodName));
+		invoke();
 	}
 		
 }
@@ -329,7 +333,7 @@ void JSParser::invoke() {
 	if ( frame == (StackFrame*)NULL) return;
 	char* method = frame->stack.pop()->val;
 	
-	List<char*> arguments;
+	List<Object*> methods;
 	accept(lparen);
 	
 	// While we're not at the rparam, create a 
@@ -338,14 +342,33 @@ void JSParser::invoke() {
 		if (this->expect(ident)) {
 			// Copy the variable.
 			char* identName = frame->stack.pop()->val;
-			char* identVal = context->getVar(identName)->val->toString();
+			Object* var = context->getVar(identName);
+			if ( var == (Object*)NULL ) {
+				// Check methods.
+				var = (Object*)context->getMethod(identName);
+				if ( var == (Object*)NULL ) {
+					// Error condition
+				} else {
+					methods.add(var);
+					continue;
+				}
+			}
+			
+			// Otherwise, it's a variable.
+			char* identVal = var->val->toString();
 			frame->stack.push(new Token(stringsym, identVal));
 			getString();
-			
-			arguments.add(frame->stack.pop()->val);
+			methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
 		} else if (this->expect(stringsym)) {
 			getString();
-			arguments.add(frame->stack.pop()->val);
+			methods.add(new Object((char*)"\0", frame->stack.pop()->val));
+		} else if (accept(functionsym)) {
+			// Create a temp variable to store the function
+			frame->stack.push(new Token(ident, (char*)"__temp"));
+			function();
+			// Add it
+			methods.add((Object*)context->getMethod((char*)"__temp"));
+			
 		} else if (this->accept(comma)) {
 			continue;
 		} else {
@@ -361,22 +384,34 @@ void JSParser::invoke() {
 	void* target = this->context->getMethod(method);	
 	if (this->context->isJSDelegate(method)) {
 		// Invoke the delegate.
+		List<char*> arguments;
+		
+		// Create the arguments.
+		for ( int i = 0; i < methods.getLength(); i++ ) {
+			arguments.add(methods.getAt(i)->val->toString());
+		}
+		
 		JSDelegate* delegate = (JSDelegate*)target;
 		delegate->invoke(arguments);
 	} else {
 		// Invoke the js object.
-		Object* object = (Object*)target;		
+		Object* object = (Object*)target;
 		this->allocate(object->tokens);	
 		
 		// Update all the arguments.
-		for ( int i = 0; i < arguments.getLength(); i++ ) {
+		for ( int i = 0; i < methods.getLength(); i++ ) {
 			if ( i < object->arguments.getLength() ) {
 				char* varName = object->arguments.getAt(i);
-				char* varVal = arguments.getAt(i);
-				context->setVar(varName, varVal);
+				Object* variable = methods.getAt(i);
+				if ( variable->tokens.getLength() > 0 ) {
+					context->setMethod(varName, variable->arguments, variable->tokens);		
+				} else {
+					char* varVal = variable->val->toString();
+					context->setVar(varName, varVal);
+				}
 			}
 		}
-		
+				
 		nextsym();
 		block();
 	}

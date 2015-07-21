@@ -10,7 +10,7 @@ typedef enum {
 	breaksym, casesym, catchsym, continuesym, defaultsym, deletesym, dosym,
 	elsesym, finallysym, forsym, insym, instanceofsym, newsym, returnsym,
 	switchsym, thissym, throwsym, trysym, typeofsym, voidsym, withsym,
-	prototypesym, scriptstartsym, scriptendsym
+	prototypesym, callsym, scriptstartsym, scriptendsym
 } Symbol;
 
 // Some datatypes.
