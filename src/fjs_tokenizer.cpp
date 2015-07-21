@@ -33,14 +33,15 @@ List<Token*> tokenize(char* str) {
 			
 			// If the character is not whitespace and it's not known
 			// append it. Otherwise, if it's known, add to result.
-			if ( c != ' ' && s == ident ) {
+			if ( c != ' ' && (s == ident || s == member) ) {
 				temp->append(c);			
-			} else if ( s != ident ) {
+			} else if ( s != ident && s != member ) {
 				prev = s;
 				Token* token = new Token();
 				token->sym = prev; token->val = (new string(c))->toString();
-				if (!processSymbol(prev, &result, code, &i))
+				if (!processSymbol(prev, &result, code, &i)) {
 					result.add(token);
+				}
 			}
 		} else {
 			temp->append(c);
@@ -96,7 +97,7 @@ Token* doUntil(Symbol tokenType, Symbol target, string* code, int* index) {
 bool isFinished(string* str, char next, Symbol nxt) {
 	if ( next == ' ' ) return true;
 	else if ( next == '\n' ) return true;
-	else if ( nxt != ident ) return true;
+	else if ( nxt != ident && nxt != member ) return true;
 	
 	return false;
 }
@@ -146,6 +147,7 @@ Symbol convert(Symbol prev, string* str) {
 	else if ( str->equals("typeof") ) return typeofsym;
 	else if ( str->equals("void") ) return voidsym;
 	else if ( str->equals("with") ) return withsym;
+	else if ( str->equals("prototype") ) return prototypesym;
 	
 	if ( prev == period ) return member;
 	

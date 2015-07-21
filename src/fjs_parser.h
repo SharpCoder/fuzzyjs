@@ -8,7 +8,6 @@
 #include "fjs_helper.cpp"
 #include "fjs_string.h"
 #include "fjs_token.h"
-#include "fjs_var.h"
 #include "fjs_context.h"
 #include "fjs_object.h"
 #include "fjs_delegate.h"
@@ -34,6 +33,7 @@ class JSParser {
 		void invoke(void);
 		void function(void);
 		void comparison(void);
+		void membercall(void);
 		void getString(void);
 		void doreturn(void);
 		void program(void);

@@ -34,6 +34,10 @@ int main(void) {
 	code->append("myFunc('starcraft ', 'love');");
 	code->append("function addLove() { return 'love'; }");
 	code->append("var t = (addLove() + 'craft'); printf(t);");
+	code->append("var obj = function() { };");
+	code->append("obj.prototype.method = function(){ printf('method'); };");
+	code->append("var instance = new obj();");
+	code->append("instance.method();");
 	
 	List<Token*> tokens = tokenize(code->toString());
 	// Print some debug information

@@ -122,6 +122,35 @@ void JSParser::doreturn() {
 	
 }
 
+void JSParser::membercall() {
+	StackFrame* frame = getFrame();
+	
+	if (expect(member)) {
+		char* name = frame->stack.pop()->val;
+		
+		if (accept(period)) {
+			context->setScope(name);
+			membercall();
+		} else if (frame->sym->sym == eql) {
+			// Get the parent thing.
+			char* parent = current->stack.pop()->val;
+			context->setScope(parent);
+			current->stack.push(new Token(member, name));
+			assignment();
+		} else if (accept(lparen)) {
+			char* parent = current->stack.pop()->val;
+			context->setScope(context->getVar(parent));
+			Object* obj = context->getVar(parent);
+			frame->stack.push(new Token(ident, name));
+			invoke();
+		}
+	} else if (accept(prototypesym)) {
+		if ( accept(period)) {
+			membercall();
+		}
+	}
+		
+}
 
 void JSParser::block() {
 	
@@ -139,13 +168,21 @@ void JSParser::block() {
 			this->assignment();
 		}
 	} else if (this->expect(ident)) {
+		char* memberName = current->stack.pop()->val;
+		current->stack.push(new Token(ident, memberName));
 		
-		// Method call?
-		this->invoke();
+		if ( accept(period)) {
+			// Traversing a member.
+			context->setScope(memberName);
+			this->membercall();
+		} else {
+			// Method call?
+			this->invoke();
+		}
 		
 	} else if (this->expect(semicolon)) {
 		// Line termination.
-		
+		context->resetScope();
 	} else if (this->accept(functionsym)) {
 		if (this->expect(ident)) {
 			this->function();
@@ -172,6 +209,24 @@ void JSParser::assignment() {
 		// Check if this has an expression in it.
 		if (accept(lparen)) {
 			expression();
+		} else if ( accept(functionsym)) {
+			//this->context->setVar(identifier, (char*)"\0");
+			frame->stack.push(new Token(member, identifier));
+			function();
+			return;
+		} else if ( accept(newsym)) {
+			// New instance.
+			if ( expect(ident)) {
+				char* objectName = frame->stack.pop()->val;
+				Object* instance = new Object(identifier, (char*)"\0");
+				Object* obj = context->getVar(objectName);
+				if ( obj != (Object*)NULL ) {
+					instance->copy(obj);
+				}
+				context->variables.add(instance);
+				context->scope = instance;
+			}
+			return;
 		} else {
 			// Get the next identifier added to the stack, if applicable.
 			if (expect(ident) || expect(stringsym)) {
@@ -273,6 +328,7 @@ void JSParser::invoke() {
 	StackFrame* frame = this->getFrame();
 	if ( frame == (StackFrame*)NULL) return;
 	char* method = frame->stack.pop()->val;
+	
 	List<char*> arguments;
 	accept(lparen);
 	
@@ -302,30 +358,25 @@ void JSParser::invoke() {
 	
 	// Do the logic!
 	// Allocate a new stack.
-	void* target = this->context->getMethod(method);
+	void* target = this->context->getMethod(method);	
 	if (this->context->isJSDelegate(method)) {
 		// Invoke the delegate.
 		JSDelegate* delegate = (JSDelegate*)target;
 		delegate->invoke(arguments);
 	} else {
 		// Invoke the js object.
-		Object* object = (Object*)target;
+		Object* object = (Object*)target;		
+		this->allocate(object->tokens);	
 		
 		// Update all the arguments.
 		for ( int i = 0; i < arguments.getLength(); i++ ) {
 			if ( i < object->arguments.getLength() ) {
-				Variable* var = object->arguments.getAt(i);
-				var->val = new string(arguments.getAt(i));
+				char* varName = object->arguments.getAt(i);
+				char* varVal = arguments.getAt(i);
+				context->setVar(varName, varVal);
 			}
 		}
-
-		this->allocate(object->tokens);		
-		for ( int i = 0; i < object->arguments.getLength(); i++ ) {
-			Variable* var = object->arguments.getAt(i);
-			context->setVar(var->name->toString(), var->val->toString());
-		}
 		
-		//printf("There are %d tokens\n", current->symbols.getLength());
 		nextsym();
 		block();
 	}
@@ -336,9 +387,10 @@ void JSParser::function() {
 	StackFrame* frame = this->getFrame();
 	if ( frame == (StackFrame*)NULL) return;
 	
-	string* name = new string(frame->stack.pop()->val);
+	Token* token = frame->stack.pop();
+	string* name = new string(token->val);
 	List<Token*> methodTokens;
-	List<Variable*> args;
+	List<char*> args;
 	Stack<bool> parens;
 	
 	this->accept(lparen);
@@ -346,8 +398,7 @@ void JSParser::function() {
 	// Collect all the parameter names for the argument list.
 	while(!this->accept(rparen)){
 		if (expect(ident)) {
-			Variable* newvar = new Variable(frame->stack.pop()->val, (char*)"\0");
-			args.add(newvar);
+			args.add(frame->stack.pop()->val);
 		} else if (accept(comma)) {
 			continue;
 		} else {
@@ -377,8 +428,21 @@ void JSParser::function() {
 		}
 		
 		// Create the object in scope.
-		this->context->setMethod(name->toString(), args, methodTokens);
+		if ( token->sym == member ) {// && context->scope != (Object*)NULL ) {
+			// Assign this method to the scope object.
+			Object* object = new Object(name->toString(), args, methodTokens);
+			if ( context->scope != (Object*)NULL ) {
+				context->setMethod(name->toString(), args, methodTokens);
+			} else {
+				context->variables.add(object);
+			}
+		} else {
+			// Otherwise, assign it to the global scope.
+			this->context->setMethod(name->toString(), args, methodTokens);
+		}
 	}
+	
+	current->stack.push(new Token(methodsym, name->toString()));
 }
 
 void JSParser::program() {

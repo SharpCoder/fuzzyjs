@@ -16,8 +16,10 @@ The following language features are currently supported (this list will be updat
 - delegate invocation
 - evaluate simple expressions (pretty much only == is currently supported)
 - string concatenation.
-- javascript functions (not prototypes, yet).
+- javascript functions
 - the return keyword!
+- object creation via: prototypes
+- object instantiation (minus the constructor stuff)
 
 More to come!
 
