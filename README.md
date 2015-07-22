@@ -19,9 +19,10 @@ The following language features are currently supported (this list will be updat
 - javascript functions
 - the return keyword!
 - object creation via: prototypes
-- object instantiation (minus the constructor stuff)
+- object instantiation
 - anonymous functions as parameters
 - basic math: plus, minus, multiply (division is a different beast that I will implement later)
+- boolean logic operators
 
 More to come!
 

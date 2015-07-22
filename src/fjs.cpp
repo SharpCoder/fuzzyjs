@@ -8,6 +8,8 @@
 // Include the primary include.
 #include "fjs.h"
 
+using namespace fjs;
+
 // Some glue functions, for testing.
 void js_printf(List<char*> args) {
 	if ( args.getLength() > 0 ) {
@@ -18,7 +20,6 @@ void js_printf(List<char*> args) {
 }
 
 int main(void) {
-		
 	JSParser* parser = new JSParser();
 	parser->registerDelegate("printf", js_printf);
 	
@@ -43,6 +44,16 @@ int main(void) {
 	code->append("function invoke(callback, b) { printf('in function '); callback.call(); b.call(); }");
 	code->append("function cd() { printf('callback!'); }");
 	code->append("invoke(function() { printf('wat wat'); }, function(){ printf('other'); });");
+	code->append("function ident() { return true; }");
+	code->append("if (true && (false || true)) { printf('in the method'); }");
+	code->append("");
+	code->append("var player = function() { this.id = '100'; }");
+	code->append("player.prototype.print = function() { printf(this.id); this.id = '10'; }");
+	code->append("var p1 = new player();");
+	code->append("var p2 = new player();");
+	code->append("p1.print();");
+	code->append("p2.print();");
+	code->append("p1.print();");
 	
 	List<Token*> tokens = tokenize(code->toString());
 	// Print some debug information

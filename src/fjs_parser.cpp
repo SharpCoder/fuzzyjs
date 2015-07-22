@@ -1,579 +1,723 @@
 #include "fjs_parser.h"
 
-JSParser::JSParser() {
-	this->context = new SystemContext();
-}
+namespace fjs {
 
-StackFrame* JSParser::getFrame() {
-	// If there is no current frame or the current frame has
-	// run out of work to do, then grab the next one in the stack.	
-	
-	// Always use the top item in the stack.
-	if ( this->frames.getLength() > 0 ) {
-		this->current = frames.pop();
+	JSParser::JSParser() {
+		this->context = new SystemContext();
+	}
+
+	StackFrame* JSParser::getFrame() {
+		// If there is no current frame or the current frame has
+		// run out of work to do, then grab the next one in the stack.	
 		
-	}
-	
-	if (this->current->index < this->current->symbols.getLength()) {
-		frames.push(this->current);
-	}
-	
-	// If the current item is NULL or the current stackframe is empty
-	if (this->current == (StackFrame*)NULL ) {
-		// If we have a new frame, get it. Otherwise return null.
-		if (this->frames.getLength() > 0) {
+		// Always use the top item in the stack.
+		if ( this->frames.getLength() > 0 ) {
 			this->current = frames.pop();
+			
+		}
+		
+		if (this->current->index < this->current->symbols.getLength()) {
 			frames.push(this->current);
+		}
+		
+		// If the current item is NULL or the current stackframe is empty
+		if (this->current == (StackFrame*)NULL ) {
+			// If we have a new frame, get it. Otherwise return null.
+			if (this->frames.getLength() > 0) {
+				this->current = frames.pop();
+				frames.push(this->current);
+			} else {
+				this->current = (StackFrame*)NULL;
+			}
+		}
+		
+		// Return the current stack frame.
+		return this->current;
+	}
+
+	void JSParser::allocate(List<Token*> tokens) {
+		StackFrame* frame = new StackFrame(tokens);
+		frame->container = context->scope;		
+		this->frames.push(frame);
+		this->current = frame;
+	}
+
+	int JSParser::accept(Symbol s) {
+		// NULL Check
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL) return 0;
+		if ( frame->sym == (Token*)NULL ) return 0;
+		
+		// Check if the symbol we're on equals the one we expect.
+		if (s == frame->sym->sym) {
+			this->nextsym();
+			return 1;
+		}
+		return 0;
+	}
+
+	int JSParser::expect(Symbol s) {
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL ) return 0;	
+		if ( frame->sym == (Token*)NULL ) return 0;
+		
+		if ( s == frame->sym->sym ) {
+			frame->stack.push(frame->sym);
+			this->nextsym();
+			return 1;
+		}
+		
+		return 0;
+	}
+
+	void JSParser::nextsym() {
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL) return;
+		
+		if ( current->index < current->symbols.getLength() ) {
+			frame->sym = current->symbols.getAt(current->index++);
 		} else {
-			this->current = (StackFrame*)NULL;
+			frame->index++;
+			this->getFrame();
 		}
 	}
-	
-	// Return the current stack frame.
-	return this->current;
-}
 
-void JSParser::allocate(List<Token*> tokens) {
-	StackFrame* frame = new StackFrame(tokens);
-	this->frames.push(frame);
-	this->current = frame;
-}
-
-int JSParser::accept(Symbol s) {
-	// NULL Check
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return 0;
-	if ( frame->sym == (Token*)NULL ) return 0;
-	
-	// Check if the symbol we're on equals the one we expect.
-	if (s == frame->sym->sym) {
-		this->nextsym();
-		return 1;
-	}
-	return 0;
-}
-
-int JSParser::expect(Symbol s) {
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL ) return 0;	
-	if ( frame->sym == (Token*)NULL ) return 0;
-	
-	if ( s == frame->sym->sym ) {
-		frame->stack.push(frame->sym);
-		this->nextsym();
-		return 1;
-	}
-	
-	return 0;
-}
-
-void JSParser::nextsym() {
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return;
-	
-	if ( current->index < current->symbols.getLength() ) {
-		frame->sym = current->symbols.getAt(current->index++);
-	} else {
-		frame->index++;
-		this->getFrame();
-	}
-}
-
-void JSParser::doreturn() {
-	char* value;
-	bool assigned = false;
-	getFrame();
-	
-	// If there's a string here, then let's process it...
-	if (expect(stringsym)) {
-	
-		// Get the string we found and see if there are more strings
-		// according to the getString() logic (which searches for contact
-		// operations and such).
-		string* val = new string(current->stack.pop()->val);
-		current->stack.push(new Token(stringsym, val->toString()));
-		getString();
-		
-		// If there were more strings, then concat them.
-		if ( current->stack.getLength() > 0 )
-			val->append(current->stack.pop()->val);
-		
-		// Return the value of all this.
-		value = val->toString();
-		assigned = true;
-	} else if (expect(ident)) {
-		char* name = current->stack.pop()->val;
-		value = context->getVar(name)->val->toString();
-		assigned = true;
-	}
-		
-	// Pop the current frame off.
-	if ( assigned ) {
-		// Pop this frame.
-		frames.pop();
-		
-		// Load the old one.
+	void JSParser::doreturn() {
+		char* value;
+		bool assigned = false;
 		getFrame();
 		
-		// Set the thing.
-		current->stack.push(new Token(stringsym, value));
+		// If there's a string here, then let's process it...
+		if (expect(stringsym) || expect(number)) {
+		
+			// Get the string we found and see if there are more strings
+			// according to the getString() logic (which searches for contact
+			// operations and such).
+			string* val = new string(current->stack.pop()->val);
+			current->stack.push(new Token(stringsym, val->toString()));
+			getString();
+			
+			// If there were more strings, then concat them.
+			if ( current->stack.getLength() > 0 ) {
+				Token* target = current->stack.pop();
+				if ( target->sym == stringsym || target->sym == number )
+					val->append(target->val);
+			}
+			
+			// Return the value of all this.
+			value = val->toString();
+			assigned = true;
+		} else if (expect(ident)) {
+			char* name = current->stack.pop()->val;
+			value = context->getVar(name)->val->toString();
+			assigned = true;
+		}
+			
+		// Pop the current frame off.
+		if ( assigned ) {
+			// Pop this frame.
+			frames.pop();
+			
+			// Load the old one.
+			getFrame();
+			
+			// Set the thing.
+			current->stack.push(new Token(stringsym, value));
+			
+		}
 		
 	}
-	
-}
 
-void JSParser::membercall() {
-	StackFrame* frame = getFrame();
-	
-	if (expect(member)) {
-		char* name = frame->stack.pop()->val;
+	void JSParser::membercall() {
+		StackFrame* frame = getFrame();
 		
-		if (accept(period)) {
-			context->setScope(name);
-			membercall();
-		} else if (frame->sym->sym == eql) {
-			// Get the parent thing.
-			char* parent = current->stack.pop()->val;
-			context->setScope(parent);
-			current->stack.push(new Token(member, name));
-			assignment();
-		} else if (accept(lparen)) {
-			char* parent = current->stack.pop()->val;
-			context->setScope(context->getVar(parent));
-			Object* obj = context->getVar(parent);
-			frame->stack.push(new Token(ident, name));
-			invoke();
-		}
-	} else if (accept(prototypesym)) {
-		if ( accept(period)) {
-			membercall();
-		}
-	} else if ( accept(callsym)) {
-		char* methodName = frame->stack.pop()->val;
-		frame->stack.push(new Token(ident, methodName));
-		invoke();
-	}
-		
-}
-
-void JSParser::block() {
-	
-	// Refresh the current stackframe pointer.
-	getFrame();
-	
-	if ( this->accept(scriptstartsym) ) {
-		// Start
-		
-	} else if (this->accept(varsym)) {
-	
-		// Get the identifier.
-		if (this->expect(ident)) {
-			// We have a variable name!
-			this->assignment();
-		}
-	} else if (this->expect(ident)) {
-		char* memberName = current->stack.pop()->val;
-		current->stack.push(new Token(ident, memberName));
-		
-		if ( accept(period)) {
-			// Traversing a member.
-			context->setScope(memberName);
-			this->membercall();
-		} else {
-			// Method call?
-			this->invoke();
-		}
-		
-	} else if (this->expect(semicolon)) {
-		// Line termination.
-		context->resetScope();
-	} else if (this->accept(functionsym)) {
-		if (this->expect(ident)) {
-			this->function();
-		} 
-	} else if (accept(returnsym)) {
-		doreturn();
-		return;
-	} else if (this->accept(lparen)) {
-		this->expression();
-	} else {
-		// Compiler error?
-		this->nextsym();
-	}
-}
-
-void JSParser::assignment() {
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return;
-	
-	if (this->accept(eql)) {
-		// Identifier and it's value.
-		char* identifier = frame->stack.pop()->val;
-		
-		// Check if this has an expression in it.
-		if (accept(lparen)) {
-			expression();
-		} else if ( accept(functionsym)) {
-			//this->context->setVar(identifier, (char*)"\0");
-			frame->stack.push(new Token(member, identifier));
-			function();
-			return;
-		} else if ( accept(newsym)) {
-			// New instance.
-			if ( expect(ident)) {
-				char* objectName = frame->stack.pop()->val;
-				Object* instance = new Object(identifier, (char*)"\0");
-				Object* obj = context->getVar(objectName);
+		if (expect(member)) {
+			char* name = frame->stack.pop()->val;
+			if (accept(period)) {
+				context->setScope(name);
+				membercall();
+			} else if (frame->sym->sym == eql) {
+				// Get the parent thing.
+				char* parent = current->stack.pop()->val;
+				context->setScope(parent);
+				current->stack.push(new Token(member, name));
+				assignment();
+			} else if (accept(lparen)) {
+				char* parent = current->stack.pop()->val;
+				context->setScope(context->getVar(parent));
+				Object* obj = context->getVar(parent);
+				frame->stack.push(new Token(ident, name));
 				
+				invoke();
+			} else {
+				// Accessing a property!
+				Object* obj = context->getVar(name);
 				if ( obj != (Object*)NULL ) {
-					instance->copy(obj);
-				}
-				
-				context->addVar(instance);
-				context->scope = instance;
-				
-				// Call the constructor.
-				if ( obj->tokens.getLength() > 0 ) {
-					current->stack.push(new Token(ident, instance->name->toString()));
-					invoke();
+					context->scope = obj;
+					frame->stack.push(new Token(stringsym, obj->val->toString()));
 				}
 			}
-			return;
-		} else if (expect(number)) {
-			char* value = frame->stack.pop()->val;
-			frame->stack.push(new Token(stringsym, value));
+		} else if (accept(prototypesym)) {
+			if ( accept(period)) {
+				membercall();
+			}
+		} else if ( accept(callsym)) {
+			char* methodName = frame->stack.pop()->val;
+			frame->stack.push(new Token(ident, methodName));
+			invoke();
+		} else {
+			if(accept(period)) {
+				membercall();
+			}
+		}
 			
-			int output = 0;
-			if ( parseInt(new string(value), &output)) {
-				maths();
+	}
+
+	void JSParser::block() {
+		
+		// Refresh the current stackframe pointer.
+		getFrame();
+		
+		if ( this->accept(scriptstartsym) ) {
+			// Start
+			
+		} else if (accept(thissym)) {
+			context->scope = current->container;
+			if (accept(period))  {
+				current->stack.push(new Token(member, context->scope->name->toString()));
+				membercall();
+				
+			}
+		} else if (accept(ifsym)) {
+			ifstatement();
+		} else if (this->accept(varsym)) {
+		
+			// Get the identifier.
+			if (this->expect(ident)) {
+				// We have a variable name!
+				this->assignment();
+			}
+		} else if (this->expect(ident)) {
+			char* memberName = current->stack.pop()->val;
+			current->stack.push(new Token(ident, memberName));
+			
+			if ( accept(period)) {
+				// Traversing a member.
+				context->setScope(memberName);
+				this->membercall();
 			} else {
+				// Method call?
+				this->invoke();
+			}
+			
+		} else if (this->expect(semicolon)) {
+			// Line termination.
+			context->resetScope(current->container);
+		} else if (this->accept(functionsym)) {
+			if (this->expect(ident)) {
+				this->function();
+			} 
+		} else if (accept(returnsym)) {
+			doreturn();
+			return;
+		} else if (this->accept(lparen)) {
+			this->expression();
+		} else {
+			// Compiler error?
+			this->nextsym();
+		}
+	}
+
+	void JSParser::assignment() {
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL) return;
+		
+		if (this->accept(eql)) {
+			// Identifier and it's value.
+			char* identifier = frame->stack.pop()->val;
+		
+			// Check if this has an expression in it.
+			if (accept(lparen)) {
+				expression();
+			} else if ( accept(functionsym)) {
+				//this->context->setVar(identifier, (char*)"\0");
+				frame->stack.push(new Token(member, identifier));
+				function();
+				return;
+			} else if ( accept(newsym)) {
+				// New instance.
+				if ( expect(ident)) {
+					
+					// Object to copy.
+					char* objectName = frame->stack.pop()->val;
+					
+					// New object we are creating.
+					Object* instance = new Object(identifier, (char*)"\0");
+					
+					// Object we are basing this off of.
+					Object* obj = context->getVar(objectName);
+					
+					// Verify the base object is real.
+					if ( obj != (Object*)NULL ) {
+						// Then do the copy.
+						instance->copy(obj);
+					}
+					
+					context->addVar(instance);
+					context->scope = instance;
+					
+					// Call the constructor.
+					if ( obj->tokens.getLength() > 0 ) {
+						current->stack.push(new Token(ident, instance->name->toString()));
+						invoke();
+					}
+				}
+				return;
+			} else if (expect(number)) {
+				char* value = frame->stack.pop()->val;
+				frame->stack.push(new Token(stringsym, value));
+				
+				int output = 0;
+				if ( parseInt(new string(value), &output)) {
+					maths();
+				} else {
+					getString();
+				}
+			} else if (expect(stringsym) || expect(ident)) {
+				// Get the next identifier added to the stack, if applicable.
 				getString();
 			}
-		} else if (expect(stringsym) || expect(ident)) {
-			// Get the next identifier added to the stack, if applicable.
-			getString();
+		
+			char* val = frame->stack.pop()->val;
+			// Do the logic!
+			this->context->setVar(identifier, val);
 		}
-	
-		char* val = frame->stack.pop()->val;
-		
-		// Do the logic!
-		this->context->setVar(identifier, val);
 	}
-}
 
-void JSParser::maths() {
-	int value = 0;
-	char* left = current->stack.pop()->val;
-	if ( parseInt(new string(left), &value) ) {
-		Token* token = (Token*)NULL;
+	bool JSParser::isTrue(string* token) {
+		if (token->equals("1")) return true;
+		else if ( token->equals("true")) return true;
+		return false;
+	}
 
+	void JSParser::logic() {
+		Token* left = current->stack.pop();	
+		Symbol op = oddsym;
 		
-		if (expect(plus) || expect(minus) || expect(times)) {
-			token = current->stack.pop();
-			int rightVal = 0;
-			
-			// If we're adding or subtracting a number...
-			if (expect(lparen)) {
-				// If we get here, it's an order of operations thing.
+		if (accept(andsym)) {		
+			 if (accept(andsym)) {
+				op = andsym;
+			}
+		} else if (accept(pipesym)) {
+			if (accept(pipesym)) {
+				op = pipesym;
+			}
+		} else if (accept(notsym)) {
+			if (accept(eql)) {
+				op = notsym;
+			}
+		}
+		
+		if ( op != oddsym ) {
+			if (accept(lparen)) {
 				expression();
-				// We need to handle this properly...
+			} else if (expect(ident)) {
+				if ( current->sym->sym == lparen ) {
+					invoke();
+				}
+			} else if (expect(stringsym) || expect(number)) {
+				// Do nothing, we're just going to pop them.
 			}
 			
-			if (expect(number)) {
-				char* right = current->stack.pop()->val;
-				if (parseInt(new string(right), &rightVal)) {		
-					switch(token->sym) {
-						case plus:
-							value += rightVal;
-						break;
-						case minus:
-							value -= rightVal;
-						break;
-						case times:
-							value *= rightVal;
-						break;
+			Token* right = current->stack.pop();
+			
+			// && comparison.
+			bool l = isTrue(new string(left->val));
+			bool r = isTrue(new string(right->val));
+			
+			if (op == andsym) {
+				if ( l && r ) current->stack.push(new Token(stringsym, (char*)"true"));
+				else current->stack.push(new Token(stringsym, (char*)"false"));
+			} else if (op == pipesym) {
+				if ( l || r ) current->stack.push(new Token(stringsym, (char*)"true"));
+				else current->stack.push(new Token(stringsym, (char*)"false"));
+			} else if ( op == notsym ) {
+				if ( l != r ) current->stack.push(new Token(stringsym, (char*)"true"));
+				else current->stack.push(new Token(stringsym, (char*)"false"));
+			}
+		}
+		
+		if ( current->sym->sym == andsym || current->sym->sym == pipesym || current->sym->sym == notsym )
+			logic();
+	}
+
+	void JSParser::ifstatement() {
+		accept(lparen);
+		Stack<bool> parens;
+		parens.push(true);
+		while(parens.getLength() > 0) {
+			if ( accept(lparen)) {
+				parens.push(true);
+				expression();
+			} else if ( accept(rparen)) {
+				parens.pop();
+			} else if (expect(ident) || expect(stringsym) || expect(number)) {
+				logic();
+			} else {
+				// ERROR CONDITION.
+				// This just prevents an infinite loop.
+				nextsym();
+			}
+		}
+		
+		char* result = current->stack.pop()->val;
+		
+		List<Token*> tokens;
+		parens.push(true);
+		if (accept(lbracket)) {
+			// We need to execute all the code between the brackets.
+			while(parens.getLength() > 0 ) {
+				if (accept(lbracket)) {
+					parens.push(true);
+				} else if (accept(rbracket)) {
+					parens.pop();
+				} else {
+					tokens.add(current->sym);
+					nextsym();
+				}
+			}
+			
+			// We need to execute this code.
+			if ( isTrue(new string(result)))
+				allocate(tokens);
+		}
+	}
+
+	void JSParser::maths() {
+		int value = 0;
+		char* left = current->stack.pop()->val;
+		if ( parseInt(new string(left), &value) ) {
+			Token* token = (Token*)NULL;
+
+			
+			if (expect(plus) || expect(minus) || expect(times)) {
+				token = current->stack.pop();
+				int rightVal = 0;
+				
+				// If we're adding or subtracting a number...
+				if (expect(lparen)) {
+					// If we get here, it's an order of operations thing.
+					expression();
+					// We need to handle this properly...
+				}
+				
+				if (expect(number)) {
+					char* right = current->stack.pop()->val;
+					if (parseInt(new string(right), &rightVal)) {		
+						switch(token->sym) {
+							case plus:
+								value += rightVal;
+							break;
+							case minus:
+								value -= rightVal;
+							break;
+							case times:
+								value *= rightVal;
+							break;
+						}
 					}
 				}
 			}
 		}
-	}
-	
-	current->stack.push(new Token(number, itoa(value)));
-	if (current->sym->sym == plus || current->sym->sym == minus || current->sym->sym == times )
-		maths();
-	if (accept(lparen)) {
-		expression();
-	}
-}
-
-void JSParser::comparison() {
-	string* left = new string(current->stack.pop()->val);
-	// Comparison
-	// Check for more branching.
-	bool branched = false;
-	if (accept(lparen)) {
-		expression();
-		branched = true;
-	}
-	
-	// Verify we have something here to work with.
-	if (branched || expect(ident) || expect(stringsym)) {
-		// If we do, get the right side and compare the two
-		// values.
-		string* right = new string(current->stack.pop()->val);
-		if (strcmp(right,left))
-			current->stack.push(new Token(stringsym, TRUE));
-		else
-			current->stack.push(new Token(stringsym, FALSE));
-	}
-}
-
-void JSParser::expression() {
-	// Parse the expression.
-	Stack<bool> parens;
-	List<Token*> tokens;
-	
-	// (1 == 1)
-	while(!accept(rparen)) {
+		
+		current->stack.push(new Token(number, itoa(value)));
+		if (current->sym->sym == plus || current->sym->sym == minus || current->sym->sym == times )
+			maths();
 		if (accept(lparen)) {
 			expression();
-		} else if (expect(ident) || expect(stringsym)) {
-			
-			char* name = current->stack.pop()->val;
-			
-			// Check if it's a method.
-			if (this->context->getMethod(name) != (void*)NULL ) {
-				Token* token = current->stack.pop();
-				current->stack.push(new Token(ident, name));
-				invoke();
-				getString();
-			} else {
-				current->stack.push(new Token(stringsym, name));
-			}
-			
-			// If this is a double equals.
-			if (accept(eql)) {
-				if (accept(eql)) {
-					comparison();					
-				}
-			}
-		} else if (expect(number)) {
-			maths();
-		} else {
-			nextsym();
 		}
 	}
-}
 
-void JSParser::getString() {
-	// Pop the value from the stack.
-	StackFrame* frame = getFrame();
-	if (frame == (StackFrame*)NULL) return;
-	if (frame->stack.getLength() <= 0 ) return;
-	
-	string* value = new string(frame->stack.pop()->val);
-	
-	// Check for any string concatination
-	if (accept(plus)) {
-		getFrame();
-		if (expect(stringsym)) {
-			if ( frame->stack.getLength() > 0 ) 
-				value->append(frame->stack.pop()->val);
-			
-		} else if (expect(ident)) {
-			if ( frame->stack.getLength() > 0 ) {
-				char* name = frame->stack.pop()->val;
-				value->append(context->getVar(name)->val->toString());
-			}
+	void JSParser::comparison() {
+		string* left = new string(current->stack.pop()->val);
+		// Comparison
+		// Check for more branching.
+		bool branched = false;
+		if (accept(lparen)) {
+			expression();
+			branched = true;
+		}
+		
+		// Verify we have something here to work with.
+		if (branched || expect(ident) || expect(stringsym)) {
+			// If we do, get the right side and compare the two
+			// values.
+			string* right = new string(current->stack.pop()->val);
+			if (strcmp(right,left))
+				current->stack.push(new Token(stringsym, TRUE));
+			else
+				current->stack.push(new Token(stringsym, FALSE));
 		}
 	}
-	
-	frame->stack.push(new Token(stringsym, value->toString()));
-}
 
-void JSParser::invoke() {
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return;
-	char* method = frame->stack.pop()->val;
-	
-	List<Object*> methods;
-	accept(lparen);
-	char fn_index[] = { '1','2','3','4','5','6','7','8','9' };
-	int index = 0;
-	
-	// While we're not at the rparam, create a 
-	// list of arguments.
-	while (true) {
-		if (this->expect(ident)) {
-			// Copy the variable.
-			char* identName = frame->stack.pop()->val;
-			Object* var = context->getVar(identName);
-			if ( var == (Object*)NULL ) {
-				// Check methods.
-				var = (Object*)context->getMethod(identName);
-				if ( var == (Object*)NULL ) {
-					// Error condition
-				} else {
-					methods.add(var);
-					continue;
-				}
-			}
-			
-			// Otherwise, it's a variable.
-			char* identVal = var->val->toString();
-			frame->stack.push(new Token(stringsym, identVal));
-			getString();
-			methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
-		} else if (this->expect(stringsym)) {
-			getString();
-			methods.add(new Object((char*)"\0", frame->stack.pop()->val));
-		} else if (accept(functionsym)) {
-			// Create a temp variable to store the function
-			string* temp = new string("__temp");
-			temp->append(fn_index[index++]);
-			
-			frame->stack.push(new Token(ident, temp->toString()));
-			function();
-			// Add it
-			methods.add((Object*)context->getMethod(temp->toString()));
-			
-		} else if (this->accept(comma)) {
-			continue;
-		} else {
-			break;
-		}
+	void JSParser::expression() {
+		// Parse the expression.
+		Stack<bool> parens;
+		List<Token*> tokens;
 		
-	}
-	
-	this->accept(rparen);
-	
-	// Do the logic!
-	// Allocate a new stack.
-	void* target = this->context->getMethod(method);	
-	if (this->context->isJSDelegate(method)) {
-		// Invoke the delegate.
-		List<char*> arguments;
-		
-		// Create the arguments.
-		for ( int i = 0; i < methods.getLength(); i++ ) {
-			arguments.add(methods.getAt(i)->val->toString());
-		}
-		
-		JSDelegate* delegate = (JSDelegate*)target;
-		delegate->invoke(arguments);
-	} else {
-		// Invoke the js object.
-		Object* object = (Object*)target;
-		this->allocate(object->tokens);	
-		
-		// Update all the arguments.
-		for ( int i = 0; i < methods.getLength(); i++ ) {
-			if ( i < object->arguments.getLength() ) {
-				char* varName = object->arguments.getAt(i);
-				Object* variable = methods.getAt(i);
-				if ( variable->tokens.getLength() > 0 ) {
-					context->setMethod(varName, variable->arguments, variable->tokens);		
-				} else {
-					char* varVal = variable->val->toString();
-					context->setVar(varName, varVal);
-				}
-			}
-		}
+		// (1 == 1)
+		while(!accept(rparen)) {
+			if (accept(lparen)) {
+				expression();
+			} else if (expect(ident) || expect(stringsym)) {
 				
-		nextsym();
-		block();
-	}
-	
-}
-
-void JSParser::function() {
-	StackFrame* frame = this->getFrame();
-	if ( frame == (StackFrame*)NULL) return;
-	
-	Token* token = frame->stack.pop();
-	string* name = new string(token->val);
-	List<Token*> methodTokens;
-	List<char*> args;
-	Stack<bool> parens;
-	
-	this->accept(lparen);
-	
-	// Collect all the parameter names for the argument list.
-	while(!this->accept(rparen)){
-		if (expect(ident)) {
-			args.add(frame->stack.pop()->val);
-		} else if (accept(comma)) {
-			continue;
-		} else {
-			break;
+				char* name = current->stack.pop()->val;
+				
+				// Check if it's a method.
+				if (this->context->getMethod(name) != (void*)NULL ) {
+					Token* token = current->stack.pop();
+					current->stack.push(new Token(ident, name));
+					invoke();
+					getString();
+				} else {
+					current->stack.push(new Token(stringsym, name));
+				}
+				
+				// If this is a double equals.
+				if (accept(eql)) {
+					if (accept(eql)) {
+						comparison();					
+					}
+				} else if (current->sym->sym == andsym || current->sym->sym == pipesym || current->sym->sym == notsym) {
+					logic();
+				}
+			} else if (expect(number)) {
+				maths();
+			} else {
+				nextsym();
+			}
 		}
 	}
-	
-	// If there's a left bracket where we expect...
-	if (this->accept(lbracket)) {
+
+	void JSParser::getString() {
+		// Pop the value from the stack.
+		StackFrame* frame = getFrame();
+		if (frame == (StackFrame*)NULL) return;
+		if (frame->stack.getLength() <= 0 ) return;
 		
-		// Keep track of the brackets.
-		parens.push(true);
+		string* value = new string(frame->stack.pop()->val);
 		
-		// Iterate until we've parsed out the whole function.
-		while (parens.getLength() > 0) {
-			if (this->accept(lbracket)) {
-				methodTokens.add(frame->sym);
-				parens.push(true);
-			} else if (accept(rbracket)) {
-				parens.pop();
-				if ( parens.getLength() > 0 )
-					methodTokens.add(frame->sym);
-			} else {
-				methodTokens.add(frame->sym);
-				this->nextsym();
+		// Check for any string concatination
+		if (accept(plus)) {
+			getFrame();
+			if (expect(stringsym)) {
+				if ( frame->stack.getLength() > 0 ) 
+					value->append(frame->stack.pop()->val);
+				
+			} else if (expect(ident)) {
+				if ( frame->stack.getLength() > 0 ) {
+					char* name = frame->stack.pop()->val;
+					value->append(context->getVar(name)->val->toString());
+				}
 			}
 		}
 		
-		// Create the object in scope.
-		if ( token->sym == member ) {// && context->scope != (Object*)NULL ) {
-			// Assign this method to the scope object.
-			Object* object = new Object(name->toString(), args, methodTokens);
-			if ( context->scope != (Object*)NULL ) {
-				context->setMethod(name->toString(), args, methodTokens);
-			} else {
-				// Update any old references if applicable..
-				context->addVar(object);
-			}
-		} else {
-			// Otherwise, assign it to the global scope.
-			this->context->setMethod(name->toString(), args, methodTokens);
-		}
+		frame->stack.push(new Token(stringsym, value->toString()));
 	}
-	
-	current->stack.push(new Token(methodsym, name->toString()));
-}
 
-void JSParser::program() {
-	do {
-		// Interpret some stuff.
-		block();
+	void JSParser::invoke() {
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL) return;
+		char* method = frame->stack.pop()->val;
 		
-		// Verify the frame still has work to do.
-		if ( this->current == (StackFrame*)NULL )
-			break;
+		List<Object*> methods;
+		accept(lparen);
+		char fn_index[] = { '1','2','3','4','5','6','7','8','9' };
+		int index = 0;
 		
-		if ( this->current->index >= this->current->symbols.getLength() ) {
-			this->current = getFrame();
-			if ( current == (StackFrame*)NULL || current->index > current->symbols.getLength() ) {
+		// While we're not at the rparam, create a 
+		// list of arguments.
+		while (true) {
+			if (this->expect(ident)) {
+				// Copy the variable.
+				char* identName = frame->stack.pop()->val;
+				Object* var = context->getVar(identName);
+				if ( var == (Object*)NULL ) {
+					// Check methods.
+					var = (Object*)context->getMethod(identName);
+					if ( var == (Object*)NULL ) {
+						// Error condition
+					} else {
+						methods.add(var);
+						continue;
+					}
+				}
+				
+				// Otherwise, it's a variable.
+				char* identVal = var->val->toString();
+				frame->stack.push(new Token(stringsym, identVal));
+				getString();
+				methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
+			} else if (this->expect(stringsym)) {
+				getString();
+				methods.add(new Object((char*)"\0", frame->stack.pop()->val));
+			} else if (accept(functionsym)) {
+				// Create a temp variable to store the function
+				string* temp = new string("__temp");
+				temp->append(fn_index[index++]);
+				
+				frame->stack.push(new Token(ident, temp->toString()));
+				function();
+				// Add it
+				methods.add((Object*)context->getMethod(temp->toString()));
+				
+			} else if (accept(thissym)) {
+				if ( current->container != (Object*)NULL )
+					context->scope = current->container;
+				
+				char* scopeName = context->scope->name->toString();	
+				frame->stack.push(new Token(member, scopeName));
+				membercall();
+				
+				char* val = frame->stack.pop()->val;
+				methods.add(new Object((char*)"\0", val));
+			} else if (this->accept(comma)) {
+				continue;
+			} else {
 				break;
 			}
-		} 
-	} while(true);
-}
+			
+		}
+		
+		this->accept(rparen);
+		
+		// Do the logic!
+		// Allocate a new stack.
+		void* target = this->context->getMethod(method);	
+		if (this->context->isJSDelegate(method)) {
+			// Invoke the delegate.
+			List<char*> arguments;
+			
+			// Create the arguments.
+			for ( int i = 0; i < methods.getLength(); i++ ) {
+				arguments.add(methods.getAt(i)->val->toString());
+			}
+			
+			JSDelegate* delegate = (JSDelegate*)target;
+			delegate->invoke(arguments);
+		} else {
+			// Invoke the js object.
+			Object* object = (Object*)target;
+			this->allocate(object->tokens);	
+			
+			// Update all the arguments.
+			for ( int i = 0; i < methods.getLength(); i++ ) {
+				if ( i < object->arguments.getLength() ) {
+					char* varName = object->arguments.getAt(i);
+					Object* variable = methods.getAt(i);
+					if ( variable->tokens.getLength() > 0 ) {
+						context->setMethod(varName, variable->arguments, variable->tokens);		
+					} else {
+						char* varVal = variable->val->toString();
+						context->setVar(varName, varVal);
+					}
+				}
+			}
+					
+			nextsym();
+			block();
+		}
+		
+	}
 
-void JSParser::parse(char* code) {
-	List<Token*> tokens = tokenize(code);
-	this->allocate(tokens);
-	this->program();
-}
+	void JSParser::function() {
+		StackFrame* frame = this->getFrame();
+		if ( frame == (StackFrame*)NULL) return;
+		
+		Token* token = frame->stack.pop();
+		string* name = new string(token->val);
+		List<Token*> methodTokens;
+		List<char*> args;
+		Stack<bool> parens;
+		
+		this->accept(lparen);
+		
+		// Collect all the parameter names for the argument list.
+		while(!this->accept(rparen)){
+			if (expect(ident)) {
+				args.add(frame->stack.pop()->val);
+			} else if (accept(comma)) {
+				continue;
+			} else {
+				break;
+			}
+		}
+		
+		// If there's a left bracket where we expect...
+		if (this->accept(lbracket)) {
+			
+			// Keep track of the brackets.
+			parens.push(true);
+			
+			// Iterate until we've parsed out the whole function.
+			while (parens.getLength() > 0) {
+				if (this->accept(lbracket)) {
+					methodTokens.add(frame->sym);
+					parens.push(true);
+				} else if (accept(rbracket)) {
+					parens.pop();
+					if ( parens.getLength() > 0 )
+						methodTokens.add(frame->sym);
+				} else {
+					methodTokens.add(frame->sym);
+					this->nextsym();
+				}
+			}
+			
+			// Create the object in scope.
+			if ( token->sym == member ) {// && context->scope != (Object*)NULL ) {
+				// Assign this method to the scope object.
+				Object* object = new Object(name->toString(), args, methodTokens);
+				if ( context->scope != (Object*)NULL ) {
+					context->setMethod(name->toString(), args, methodTokens);
+				} else {
+					// Update any old references if applicable..
+					context->addVar(object);
+				}
+			} else {
+				// Otherwise, assign it to the global scope.
+				this->context->setMethod(name->toString(), args, methodTokens);
+			}
+		}
+		
+		current->stack.push(new Token(methodsym, name->toString()));
+	}
 
-void JSParser::registerDelegate(const char* identifier, void (*func)(List<char*>args)) {
-	this->context->registerDelegate(identifier, func);
-}
+	void JSParser::program() {
+		do {
+			// Interpret some stuff.
+			block();
+			
+			// Verify the frame still has work to do.
+			if ( this->current == (StackFrame*)NULL )
+				break;
+			
+			if ( this->current->index >= this->current->symbols.getLength() ) {
+				this->current = getFrame();
+				if ( current == (StackFrame*)NULL || current->index > current->symbols.getLength() ) {
+					break;
+				}
+			} 
+		} while(true);
+	}
 
+	void JSParser::parse(char* code) {
+		List<Token*> tokens = tokenize(code);
+		this->allocate(tokens);
+		this->program();
+	}
+
+	void JSParser::registerDelegate(const char* identifier, void (*func)(List<char*>)) {
+		this->context->registerDelegate(identifier, func);
+	}
+}

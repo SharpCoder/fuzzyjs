@@ -10,112 +10,114 @@
 #ifndef __PI_STRING_H_
 #define __PI_STRING_H_
 
-int strlen(char* input);
+namespace fjs {
+	int strlen(char* input);
 
-class string {
-	private:
-		char* value;
+	class string {
+		private:
+			char* value;
 
-	public:
-		int length;
+		public:
+			int length;
 
-		string(void) {
-			this->value = (char*)"\0";
-		}
-		string(const char* val) {
-			this->value = (char*)"\0";
-			this->append((char*)val);
-		}
-		string(char val) {
-			this->value = (char*)"\0";
-			this->append(val);
-		}
-		void append(const char* c) {
-			this->append((char*)c);
-		}
+			string(void) {
+				this->value = (char*)"\0";
+			}
+			string(const char* val) {
+				this->value = (char*)"\0";
+				this->append((char*)val);
+			}
+			string(char val) {
+				this->value = (char*)"\0";
+				this->append(val);
+			}
+			void append(const char* c) {
+				this->append((char*)c);
+			}
 
-		void append(char* c) {
-			int a = strlen(this->value);
-			int b = strlen(c);			
-			int len = a + b;
-			
-			char* newVal = (char*)malloc((len + 1) * sizeof(char));
-			// Clear it out.
-			for ( int i = 0; i < len + 1; i++ )
-				*(newVal + i) = '\0';
-			
-			for ( int i = 0; i < a; i++ )
-				*(newVal + i) = this->value[i];
+			void append(char* c) {
+				int a = strlen(this->value);
+				int b = strlen(c);			
+				int len = a + b;
 				
-			for ( int i = 0; i < b; i++ )
-				*(newVal + a + i) = *(c + i);
+				char* newVal = (char*)malloc((len + 1) * sizeof(char));
+				// Clear it out.
+				for ( int i = 0; i < len + 1; i++ )
+					*(newVal + i) = '\0';
+				
+				for ( int i = 0; i < a; i++ )
+					*(newVal + i) = this->value[i];
+					
+				for ( int i = 0; i < b; i++ )
+					*(newVal + a + i) = *(c + i);
 
-			this->value = newVal;
-			this->length = a + b + 1;
-		}
-		
-		void clear() {
-			this->value = (char*)"\0";
-			this->length = 0;
-		}
-
-		void append(char c) {
-			char vals[] = { c, '\0' };
-			this->append(vals);
-		}
-
-		char getAt(int index) {
-			if ( index > this->length ) return (char)NULL;
-			return *(this->value + index);
-		}
-
-		string* substr(int start, int end) {
-			string* der = new string();
-			for ( int i = start; i < end; i++ ) {
-				der->append(*(this->value + i));
+				this->value = newVal;
+				this->length = a + b + 1;
 			}
-			return der;
-		}
-		
-		bool equals(const char* target) {
-			string* trg = new string(target);
-			if (this->length != trg->length ) return false;
-			for(int i = 0; i < this->length; i++ ) {
-				if (*(this->value + i) == '\0') return true;
-				if (*(this->value + i) != *(trg->value + i)) return false;
+			
+			void clear() {
+				this->value = (char*)"\0";
+				this->length = 0;
 			}
-			return true;
-		}
 
-		char* toString() {
-			return this->value;
-		}
-		
-		int size() {
-			return this->length;
-		}
-};
+			void append(char c) {
+				char vals[] = { c, '\0' };
+				this->append(vals);
+			}
 
-int strlen(char* input) { 
-	int index = 0;
-	char temp = ' ';
-	do {
-		temp = input[index++];
-	} while ( temp != '\0' );
-	return index - 1;
-}
+			char getAt(int index) {
+				if ( index > this->length ) return (char)NULL;
+				return *(this->value + index);
+			}
 
-bool strcmp(string* a, string* b) {
-	if ( a->length != b->length ) return false;
+			string* substr(int start, int end) {
+				string* der = new string();
+				for ( int i = start; i < end; i++ ) {
+					der->append(*(this->value + i));
+				}
+				return der;
+			}
+			
+			bool equals(const char* target) {
+				string* trg = new string(target);
+				if (this->length != trg->length ) return false;
+				for(int i = 0; i < this->length; i++ ) {
+					if (*(this->value + i) == '\0') return true;
+					if (*(this->value + i) != *(trg->value + i)) return false;
+				}
+				return true;
+			}
 
-	const char* one = a->toString();
-	const char* two = b->toString();
+			char* toString() {
+				return this->value;
+			}
+			
+			int size() {
+				return this->length;
+			}
+	};
 
-	for ( int i = 0; i < a->length; i++ ) {
-		if ( one[i] != two[i] ) return false;
+	int strlen(char* input) { 
+		int index = 0;
+		char temp = ' ';
+		do {
+			temp = input[index++];
+		} while ( temp != '\0' );
+		return index - 1;
 	}
 
-	return true;
+	bool strcmp(string* a, string* b) {
+		if ( a->length != b->length ) return false;
+
+		const char* one = a->toString();
+		const char* two = b->toString();
+
+		for ( int i = 0; i < a->length; i++ ) {
+			if ( one[i] != two[i] ) return false;
+		}
+
+		return true;
+	}
 }
 
 #endif
