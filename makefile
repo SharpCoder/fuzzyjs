@@ -2,11 +2,6 @@ OBJS = fuzzyjs.o
 CC = g++
 DEBUG = -g
 CFLAGS = -Wall -c $(DEBUG)
-
-fuzzyjs.o: ./src/fjs.cpp
-	@$(CC) $(CFLAGS) ./src/fjs.cpp
-	@ar rvs fjs.a fjs.o
-	@rm fjs.o
 	
 debug:
 	@$(CC) ./src/fjs.cpp

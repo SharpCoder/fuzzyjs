@@ -7,6 +7,9 @@ I want to utilize javascript in a baremetal project of mine. As such, I don't ha
 ## How do I use this?
 Look at fjs.cpp for a small demonstration, but essentially just include "fjs.h" and then you have access to the JSParser object. Instantiate it and call the _parse_ method which takes a char* of code and away you go! There are also methods to register c++ functions for use in javascript (per the demo).
 
+## Testing Framework
+I use the cxxTest Unit Testing framework. Since I'm developing on linux, this was my choice as it's pretty easy to get setup. I highly recommend it. Also, I modified my makefile to have an option that automatically runs the test suite (provided it's installed) which is pretty awesome! More info here: http://cxxtest.com/
+
 ## What is supported?
 The following language features are currently supported (this list will be updated as I add more stuff).
 
