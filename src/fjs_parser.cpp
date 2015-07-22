@@ -109,6 +109,7 @@ namespace fjs {
 			assigned = true;
 		} else if (expect(ident)) {
 			char* name = current->stack.pop()->val;
+			if ( context->scope == (Object*)NULL ) context->scope = current->container;
 			value = context->getVar(name)->val->toString();
 			assigned = true;
 		}
@@ -153,7 +154,7 @@ namespace fjs {
 				// Accessing a property!
 				Object* obj = context->getVar(name);
 				if ( obj != (Object*)NULL ) {
-					context->scope = obj;
+					context->setScope(obj);
 					frame->stack.push(new Token(stringsym, obj->val->toString()));
 				}
 			}
@@ -235,7 +236,7 @@ namespace fjs {
 		if (this->accept(eql)) {
 			// Identifier and it's value.
 			char* identifier = frame->stack.pop()->val;
-		
+			
 			// Check if this has an expression in it.
 			if (accept(lparen)) {
 				expression();
@@ -255,6 +256,7 @@ namespace fjs {
 					Object* instance = new Object(identifier, (char*)"\0");
 					
 					// Object we are basing this off of.
+					if ( context->scope == (Object*)NULL ) context->scope = current->container;
 					Object* obj = context->getVar(objectName);
 					
 					// Verify the base object is real.
@@ -264,11 +266,11 @@ namespace fjs {
 					}
 					
 					context->addVar(instance);
-					context->scope = instance;
+					context->setScope(instance);
 					
 					// Call the constructor.
 					if ( obj->tokens.getLength() > 0 ) {
-						current->stack.push(new Token(ident, instance->name->toString()));
+						current->stack.push(new Token(ident, obj->name->toString()));
 						invoke();
 					}
 				}
@@ -290,6 +292,7 @@ namespace fjs {
 		
 			char* val = frame->stack.pop()->val;
 			// Do the logic!
+			if ( context->scope == (Object*)NULL ) context->scope = current->container;
 			this->context->setVar(identifier, val);
 		}
 	}
@@ -517,6 +520,7 @@ namespace fjs {
 			} else if (expect(ident)) {
 				if ( frame->stack.getLength() > 0 ) {
 					char* name = frame->stack.pop()->val;
+					if ( context->scope == (Object*)NULL ) context->scope = current->container;
 					value->append(context->getVar(name)->val->toString());
 				}
 			}
@@ -541,6 +545,7 @@ namespace fjs {
 			if (this->expect(ident)) {
 				// Copy the variable.
 				char* identName = frame->stack.pop()->val;
+				if ( context->scope == (Object*)NULL ) context->scope = current->container;
 				Object* var = context->getVar(identName);
 				if ( var == (Object*)NULL ) {
 					// Check methods.
@@ -553,13 +558,25 @@ namespace fjs {
 					}
 				}
 				
-				// Otherwise, it's a variable.
+				// Check if it's a member.
+				if (current->sym->sym == period ) {
+					char* identVal = var->val->toString();
+					frame->stack.push(new Token(stringsym, identVal));
+					membercall();
+					methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
+					continue;
+				}
+				
+				// Otherwise, it's a variable.	
 				char* identVal = var->val->toString();
 				frame->stack.push(new Token(stringsym, identVal));
 				getString();
 				methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
-			} else if (this->expect(stringsym)) {
+			} else if (this->expect(stringsym)){ 
 				getString();
+				methods.add(new Object((char*)"\0", frame->stack.pop()->val));
+			} else if (this->expect(number)) {
+				maths();
 				methods.add(new Object((char*)"\0", frame->stack.pop()->val));
 			} else if (accept(functionsym)) {
 				// Create a temp variable to store the function
@@ -618,6 +635,7 @@ namespace fjs {
 					if ( variable->tokens.getLength() > 0 ) {
 						context->setMethod(varName, variable->arguments, variable->tokens);		
 					} else {
+						if ( context->scope == (Object*)NULL ) context->scope = current->container;
 						char* varVal = variable->val->toString();
 						context->setVar(varName, varVal);
 					}

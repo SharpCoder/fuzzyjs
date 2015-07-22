@@ -105,6 +105,7 @@ namespace fjs {
 		if ( scope != (Object*)NULL ) {
 			Object* target = scope->getMember(identifier);
 			if ( target != (Object*)NULL ) {
+				printf("found %s in %s\n", identifier, scope->name->toString());
 				return target;
 			}
 			
@@ -128,7 +129,7 @@ namespace fjs {
 		Object* newvar = new Object(identifier, val);
 		
 		// Update old references, if applicable.
-		if (oldvar != (Object*)NULL) {
+		if (oldvar != (Object*)NULL) {			
 			oldvar->val->clear();
 			oldvar->val->append(val);
 			free(newvar);

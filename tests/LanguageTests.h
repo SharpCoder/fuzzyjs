@@ -15,6 +15,10 @@ void resetTest() {
 	testRan = false;
 }
 
+void js_printf(List<char*> args) {
+	printf("\n[Debug] %s\n", args.getAt(0));
+}
+
 void js_assert(List<char*> args) {
 	string* arg = new string(args.getAt(0));
 	string* tar = new string(args.getAt(1));
@@ -31,6 +35,7 @@ public:
 	void setUp() {
 		this->parser = new JSParser();
 		this->parser->registerDelegate("assert", js_assert);
+		this->parser->registerDelegate("printf", js_printf);
 	}
 	
 	void testVariableAssignment(void) {
@@ -38,6 +43,15 @@ public:
 		string* code = new string();
 		code->append("var a = '10';");
 		code->append("assert(a, '10');");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);
+	}
+	
+	void testVariableAssignmentNumber() {
+		resetTest();
+		string* code = new string();
+		code->append("var a = 10;");
+		code->append("assert(a, 10);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);
 	}
@@ -70,6 +84,15 @@ public:
 		TS_ASSERT(testRan);
 	}
 	
+	void testFunctionArgumentsMath() {
+		resetTest();
+		string* code = new string();
+		code->append("assert('10', 5 + 5);");
+		code->append("assert(6 + 4, 5 + 5);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);
+	}
+	
 	void testArguments() {
 		resetTest();
 		string* code = new string();
@@ -88,11 +111,26 @@ public:
 		TS_ASSERT(testRan);
 	}
 	
+	void testThisKeyword() {
+		resetTest();
+		string* code = new string();
+		code->append("var obj = function() { this.id = 100; assert(this.id, '100'); }");
+		code->append("var inst = new obj();");
+		code->append("inst.id = '10';");
+		code->append("assert(inst.id, '10');");
+		code->append("var inst2 = new obj();");
+		code->append("assert(inst.id, '10');");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
 	void testBasicLogic() {
 		resetTest();
 		string* code = new string();
 		code->append("var obj = (true || false)");
+		code->append("var obj2 = (true && true);");
 		code->append("assert(obj, true);");
+		code->append("assert(obj2, true);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);
 	}

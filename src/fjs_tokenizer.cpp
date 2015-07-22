@@ -25,8 +25,9 @@ namespace fjs {
 					// Otherwise, convert the string into a symbol and add it.
 					prev = convert(prev, temp);
 					Token* token = new Token(prev, temp->toString());
-					if (!processSymbol(prev, &result, code, &i))
+					if (!processSymbol(token, &result, code, &i)) {
 						result.add(token);
+					}
 				}
 				
 				// Clear stuff out.
@@ -40,7 +41,7 @@ namespace fjs {
 					prev = s;
 					Token* token = new Token();
 					token->sym = prev; token->val = (new string(c))->toString();
-					if (!processSymbol(prev, &result, code, &i)) {
+					if (!processSymbol(token, &result, code, &i)) {
 						result.add(token);
 					}
 				}
@@ -54,13 +55,20 @@ namespace fjs {
 		return result;
 	}
 
-	bool processSymbol(Symbol s, List<Token*>* results, string* code, int* index) {
-		if ( s == multicommentsym ) {
+	bool processSymbol(Token* token, List<Token*>* results, string* code, int* index) {
+		if ( token->sym == multicommentsym ) {
 			(*results).add(doUntil(oddsym, multicommentsym, code, index));
 			return true;
-		} else if ( s == quotesym ) {
+		} else if ( token->sym == quotesym ) {
 			(*results).add(doUntil(stringsym, quotesym, code, index));
 			return true;
+		}
+		
+		// Check if it's a number.
+		int value = 0;
+		if (parseInt(new string(token->val), &value)) {
+			token->sym = number;
+			return false;
 		}
 		
 		return false;
