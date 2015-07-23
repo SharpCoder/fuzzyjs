@@ -17,7 +17,7 @@ The following language features are currently supported (this list will be updat
 - function declaration
 - c++ interop "delegates"
 - delegate invocation
-- evaluate simple expressions (pretty much only == is currently supported)
+- evaluate simple expressions
 - string concatenation
 - javascript functions
 - the return keyword!
@@ -26,6 +26,7 @@ The following language features are currently supported (this list will be updat
 - anonymous functions as parameters
 - basic math: plus, minus, multiply (division is a different beast that I will implement later)
 - boolean logic operators
+- (System Command) parseInt
 
 More to come!
 
