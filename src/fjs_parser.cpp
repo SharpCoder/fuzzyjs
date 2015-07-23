@@ -1,9 +1,28 @@
 #include "fjs_parser.h"
 
 namespace fjs {
-
+	
+	// Glue functions
+	// TODO: Make the delegate send in the JSParser so we can manipulate the current
+	// stackframe.
+	void js_parseInt(void* ctx, List<char*> args) {
+		JSParser* parser = (JSParser*)ctx;
+		if ( args.getLength() == 1 ) {
+			int val = 0;
+			if( parseInt(new string(args.getAt(0)), &val)) {
+				parser->current->stack.push(new Token(number, args.getAt(0)));
+				parser->maths();
+			} else {
+				parser->current->stack.push(new Token(stringsym, args.getAt(0)));
+			}
+		} else {
+			// Error condition
+		}
+	}
+	
 	JSParser::JSParser() {
 		this->context = new SystemContext();
+		this->registerDelegate("parseInt", js_parseInt);
 	}
 
 	StackFrame* JSParser::getFrame() {
@@ -39,19 +58,19 @@ namespace fjs {
 
 	void JSParser::allocate(List<Token*> tokens) {
 		StackFrame* frame = new StackFrame(tokens);
-		frame->container = context->scope;		
+		frame->container = context->scope;
 		this->frames.push(frame);
-		this->current = frame;
+		getFrame();
 	}
 
 	int JSParser::accept(Symbol s) {
+		getFrame();
 		// NULL Check
-		StackFrame* frame = this->getFrame();
-		if ( frame == (StackFrame*)NULL) return 0;
-		if ( frame->sym == (Token*)NULL ) return 0;
+		if ( current == (StackFrame*)NULL) return 0;
+		if ( current->sym == (Token*)NULL ) return 0;
 		
 		// Check if the symbol we're on equals the one we expect.
-		if (s == frame->sym->sym) {
+		if (s == current->sym->sym) {
 			this->nextsym();
 			return 1;
 		}
@@ -59,12 +78,11 @@ namespace fjs {
 	}
 
 	int JSParser::expect(Symbol s) {
-		StackFrame* frame = this->getFrame();
-		if ( frame == (StackFrame*)NULL ) return 0;	
-		if ( frame->sym == (Token*)NULL ) return 0;
+		if ( current == (StackFrame*)NULL ) return 0;	
+		if ( current->sym == (Token*)NULL ) return 0;
 		
-		if ( s == frame->sym->sym ) {
-			frame->stack.push(frame->sym);
+		if ( s == current->sym->sym ) {
+			current->stack.push(current->sym);
 			return this->nextsym();
 		}
 		
@@ -72,14 +90,12 @@ namespace fjs {
 	}
 
 	int JSParser::nextsym() {
-		StackFrame* frame = this->getFrame();
-		if ( frame == (StackFrame*)NULL) return 0;
-		
-		if ( frame->index < frame->symbols.getLength() ) {
-			frame->sym = current->symbols.getAt(current->index++);
+		if ( current == (StackFrame*)NULL) return 0;
+		if ( current->index < current->symbols.getLength() ) {
+			current->sym = current->symbols.getAt(current->index++);
 			return 1;
 		} else {
-			frame->index++;
+			current->index++;
 			this->getFrame();
 			return 1;
 		}
@@ -115,8 +131,9 @@ namespace fjs {
 			value = context->getVar(name)->val->toString();
 			assigned = true;
 		}
-			
-		// Pop this frame.
+		
+		// Update the index so it stops processing the script and then
+		// pop the frame.
 		frames.pop();
 		
 		// Load the old one.
@@ -201,30 +218,25 @@ namespace fjs {
 			}
 		} else if (this->expect(ident)) {
 			char* memberName = current->stack.pop()->val;
-			current->stack.push(new Token(ident, memberName));
-			
 			if ( accept(period)) {
 				// Traversing a member.
 				context->setScope(memberName);
+				current->stack.push(new Token(member, memberName));
 				this->membercall();
-				return;
 			} else {
 				// Method call?
+				current->stack.push(new Token(ident, memberName));
 				this->invoke();
-				return;
 			}
-			
 		} else if (this->expect(semicolon)) {
 			// Line termination.
 			context->resetScope(current->container);
 		} else if (this->accept(functionsym)) {
 			if (this->expect(ident)) {
 				this->function();
-				return;
 			} 
 		} else if (accept(returnsym)) {
 			doreturn();
-			return;
 		} else if (this->accept(lparen)) {
 			this->expression();
 		} else {
@@ -245,7 +257,7 @@ namespace fjs {
 			if (accept(lparen)) {
 				expression();
 			} else if ( accept(functionsym)) {
-				//this->context->setVar(identifier, (char*)"\0");
+				//this->context->setScope(identifier);
 				frame->stack.push(new Token(member, identifier));
 				function();
 				return;
@@ -274,8 +286,7 @@ namespace fjs {
 					// Call the constructor.
 					if ( obj->tokens.getLength() > 0 ) {
 						current->stack.push(new Token(ident, obj->name->toString()));
-						allocate(obj->tokens);
-						//invoke();
+						invoke();
 					}
 				}
 				return;
@@ -292,6 +303,13 @@ namespace fjs {
 			} else if (expect(stringsym)) {// || expect(ident)) {
 				// Get the next identifier added to the stack, if applicable.
 				getString();
+			} else if (expect(ident)) {
+				if ( accept(period)) {
+					membercall();
+				} else {
+					invoke();
+					getString();
+				}
 			}
 			
 			if ( frame->stack.getLength() > 0 ) {
@@ -489,7 +507,6 @@ namespace fjs {
 					Token* token = current->stack.pop();
 					current->stack.push(new Token(ident, name));
 					invoke();
-					getString();
 				} else {
 					current->stack.push(new Token(stringsym, name));
 				}
@@ -516,102 +533,109 @@ namespace fjs {
 		if (frame == (StackFrame*)NULL) return;
 		if (frame->stack.getLength() <= 0 ) return;
 		
-		string* value = new string(frame->stack.pop()->val);
-		
-		// Check for any string concatination
-		if (accept(plus)) {
-			getFrame();
-			if (expect(stringsym)) {
-				if ( frame->stack.getLength() > 0 ) 
-					value->append(frame->stack.pop()->val);
-				
-			} else if (expect(ident)) {
-				if ( frame->stack.getLength() > 0 ) {
-					char* name = frame->stack.pop()->val;
-					value->append(context->getVar(name)->val->toString());
+		Token* token = frame->stack.pop();
+		if ( token->sym == stringsym || token->sym == number ) {
+
+			string* value = new string(token->val);
+			
+			// Check for any string concatination
+			if (accept(plus)) {
+				getFrame();
+				if (expect(stringsym)) {
+					if ( frame->stack.getLength() > 0 ) 
+						value->append(frame->stack.pop()->val);
+					
+				} else if (expect(ident)) {
+					if ( frame->stack.getLength() > 0 ) {
+						char* name = frame->stack.pop()->val;
+						value->append(context->getVar(name)->val->toString());
+					}
 				}
 			}
+			
+			frame->stack.push(new Token(stringsym, value->toString()));
 		}
-		
-		frame->stack.push(new Token(stringsym, value->toString()));
 	}
 
 	void JSParser::invoke() {
 		StackFrame* frame = this->getFrame();
 		if ( frame == (StackFrame*)NULL) return;
 		char* method = frame->stack.pop()->val;
-		
 		List<Object*> methods;
 		accept(lparen);
 		char fn_index[] = { '1','2','3','4','5','6','7','8','9' };
 		int index = 0;
 		
-		// While we're not at the rparam, create a 
-		// list of arguments.
-		while (true) {
-			if (this->expect(ident)) {
-				// Copy the variable.
-				char* identName = frame->stack.pop()->val;
-				Object* var = context->getVar(identName);
-				if ( var == (Object*)NULL ) {
-					// Check methods.
-					var = (Object*)context->getMethod(identName);
+		if ( !accept(rparen)) {
+			// While we're not at the rparam, create a 
+			// list of arguments.
+			while (true) {
+				if (expect(ident)) {
+					
+					// Copy the variable.
+					char* identName = frame->stack.pop()->val;
+					Object* var = context->getVar(identName);
 					if ( var == (Object*)NULL ) {
-						// Error condition
-					} else {
-						methods.add(var);
+						// Check methods.
+						var = (Object*)context->getMethod(identName);
+						if ( var == (Object*)NULL ) {
+							// Error condition
+							break;
+						} else {
+							methods.add(var);
+							continue;
+						}
+					}
+					
+					// Check if it's a member.
+					if (current->sym->sym == period ) {
+						context->setScope(identName);
+						membercall();
+						methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
 						continue;
 					}
-				}
-				
-				// Check if it's a member.
-				if (current->sym->sym == period ) {
-					context->setScope(identName);
+					
+					// Otherwise, it's a variable.	
+					char* identVal = var->val->toString();
+					frame->stack.push(new Token(stringsym, identVal));
+					getString();
+					methods.add(new Object(var->name->toString(), identVal));
+				} else if (this->expect(stringsym)){ 
+					getString();
+					methods.add(new Object((char*)"\0", frame->stack.pop()->val));
+				} else if (this->expect(number)) {
+					maths();
+					methods.add(new Object((char*)"\0", frame->stack.pop()->val));
+				} else if (accept(functionsym)) {
+					// Create a temp variable to store the function
+					string* temp = new string("__temp");
+					temp->append(fn_index[index++]);
+					
+					frame->stack.push(new Token(ident, temp->toString()));
+					function();
+					// Add it
+					methods.add((Object*)context->getMethod(temp->toString()));
+					
+				} else if (accept(thissym)) {
+					if ( current->container != (Object*)NULL )
+						context->scope = current->container;
+					
+					char* scopeName = context->scope->name->toString();	
+					frame->stack.push(new Token(member, scopeName));
 					membercall();
-					methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
+					
+					char* val = frame->stack.pop()->val;
+					methods.add(new Object((char*)"\0", val));
+				} else if (this->accept(comma)) {
 					continue;
+				} else {
+					break;
 				}
 				
-				// Otherwise, it's a variable.	
-				char* identVal = var->val->toString();
-				frame->stack.push(new Token(stringsym, identVal));
-				getString();
-				methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
-			} else if (this->expect(stringsym)){ 
-				getString();
-				methods.add(new Object((char*)"\0", frame->stack.pop()->val));
-			} else if (this->expect(number)) {
-				maths();
-				methods.add(new Object((char*)"\0", frame->stack.pop()->val));
-			} else if (accept(functionsym)) {
-				// Create a temp variable to store the function
-				string* temp = new string("__temp");
-				temp->append(fn_index[index++]);
-				
-				frame->stack.push(new Token(ident, temp->toString()));
-				function();
-				// Add it
-				methods.add((Object*)context->getMethod(temp->toString()));
-				
-			} else if (accept(thissym)) {
-				if ( current->container != (Object*)NULL )
-					context->scope = current->container;
-				
-				char* scopeName = context->scope->name->toString();	
-				frame->stack.push(new Token(member, scopeName));
-				membercall();
-				
-				char* val = frame->stack.pop()->val;
-				methods.add(new Object((char*)"\0", val));
-			} else if (this->accept(comma)) {
-				continue;
-			} else {
-				break;
 			}
 			
+			this->accept(rparen);
 		}
-		
-		this->accept(rparen);
 		
 		// Do the logic!
 		// Allocate a new stack.
@@ -624,30 +648,33 @@ namespace fjs {
 			for ( int i = 0; i < methods.getLength(); i++ ) {
 				arguments.add(methods.getAt(i)->val->toString());
 			}
-			
+
+			void* ref = (void*)this;
 			JSDelegate* delegate = (JSDelegate*)target;
-			delegate->invoke(arguments);
+			delegate->invoke(ref, (List<char*>)arguments);
 		} else {
 			// Invoke the js object.
 			Object* object = (Object*)target;
-			this->allocate(object->tokens);	
-			
-			// Update all the arguments.
-			for ( int i = 0; i < methods.getLength(); i++ ) {
-				if ( i < object->arguments.getLength() ) {
-					char* varName = object->arguments.getAt(i);
-					Object* variable = methods.getAt(i);
-					if ( variable->tokens.getLength() > 0 ) {
-						context->setMethod(varName, variable->arguments, variable->tokens);		
-					} else {
-						char* varVal = variable->val->toString();
-						context->setVar(varName, varVal);
+			if ( object != (Object*)NULL ) {
+				this->allocate(object->tokens);
+				
+				// Update all the arguments.
+				for ( int i = 0; i < methods.getLength(); i++ ) {
+					if ( i < object->arguments.getLength() ) {
+						char* varName = object->arguments.getAt(i);
+						Object* variable = methods.getAt(i);
+						if ( variable->tokens.getLength() > 0 ) {
+							context->setMethod(varName, variable->arguments, variable->tokens);		
+						} else {
+							char* varVal = variable->val->toString();
+							context->setVar(varName, varVal);
+						}
 					}
 				}
-			}
-					
-			nextsym();
-			block();
+				
+				block();
+				
+			} 
 		}
 		
 	}
@@ -719,12 +746,12 @@ namespace fjs {
 		do {
 			// Interpret some stuff.
 			block();
-			
+
 			// Verify the frame still has work to do.
 			if ( this->current == (StackFrame*)NULL )
 				break;
 			
-			if ( this->current->index >= this->current->symbols.getLength() ) {
+			if ( this->current->index > this->current->symbols.getLength() ) {
 				this->current = getFrame();
 				if ( current == (StackFrame*)NULL || current->index > current->symbols.getLength() ) {
 					break;
@@ -739,7 +766,7 @@ namespace fjs {
 		this->program();
 	}
 
-	void JSParser::registerDelegate(const char* identifier, void (*func)(List<char*>)) {
+	void JSParser::registerDelegate(const char* identifier, void (*func)(void* p,List<char*> a)) {
 		this->context->registerDelegate(identifier, func);
 	}
 }

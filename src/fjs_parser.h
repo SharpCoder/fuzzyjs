@@ -15,11 +15,12 @@
 
 namespace fjs {
 	class JSParser {
-		private:
+		protected:
 			SystemContext* context;
 			Stack<StackFrame*> frames;
+			
+		public:
 			StackFrame* current;
-
 			 // Method for creating a new stack frame.
 			void allocate(List<Token*> tokens);
 			StackFrame* getFrame(void);
@@ -40,13 +41,13 @@ namespace fjs {
 			void doreturn(void);
 			void maths(void);
 			void logic(void);
+			void doparseint(void);
 			void ifstatement(void);
 			void program(void);
-			
-		public:
+
 			JSParser();
 			void parse(char* code);
-			void registerDelegate(const char* identifier, void (*func)(List<char*>));
+			void registerDelegate(const char* identifier, void (*func)(void*,List<char*>));
 	};
 }
 

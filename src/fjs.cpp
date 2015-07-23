@@ -11,7 +11,7 @@
 using namespace fjs;
 
 // Some glue functions, for testing.
-void js_printf(List<char*> args) {
+void js_printf(void* parser, List<char*> args) {
 	if ( args.getLength() > 0 ) {
 		printf("[%s]\n", args.getAt(0));
 	} else {

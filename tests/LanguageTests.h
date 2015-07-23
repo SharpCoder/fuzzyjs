@@ -15,11 +15,11 @@ void resetTest() {
 	testRan = false;
 }
 
-void js_printf(List<char*> args) {
+void js_printf(void* parser, List<char*> args) {
 	printf("\n[Debug] %s\n", args.getAt(0));
 }
 
-void js_assert(List<char*> args) {
+void js_assert(void* parser, List<char*> args) {
 	string* arg = new string(args.getAt(0));
 	string* tar = new string(args.getAt(1));
 	
@@ -84,6 +84,15 @@ public:
 		TS_ASSERT(testRan);
 	}
 	
+	void testFunctionConcatenation() {
+		resetTest();
+		string* code = new string();
+		code->append("function doIt(a,b) { assert(a + b, 'lovecraft!'); }");
+		code->append("doIt('love', 'craft!');");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);
+	}
+	
 	void testFunctionArgumentsMath() {
 		resetTest();
 		string* code = new string();
@@ -91,6 +100,15 @@ public:
 		code->append("assert(6 + 4, 5 + 5);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);
+	}
+	
+	void testParseInt() {
+		resetTest();
+		string* code = new string();
+		code->append("var a = parseInt('15' + '5') + 5;");
+		code->append("assert(a, 160);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);	
 	}
 	
 	void testArguments() {
@@ -137,6 +155,19 @@ public:
 		TS_ASSERT(testRan);	
 	}
 	
+	void testFunctionPrototypes() {
+		resetTest();
+		string* code = new string();
+		code->append("var advObj = function() { this.id = 100; assert(this.id, '100'); }");
+		code->append("advObj.prototype.add = function() { this.id = 20; }");
+		code->append("advObj.prototype.identity = function() { this.id = 300; return '1'; }");
+		code->append("var bobby = new advObj();");
+		code->append("var output = bobby.identity();");
+		code->append("assert(output,'1');");
+		code->append("assert(bobby.id,'300');");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);	
+	}
 	
 	void testBasicLogic() {
 		resetTest();

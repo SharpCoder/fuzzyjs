@@ -18,7 +18,7 @@ namespace fjs {
 			void addVar(Object* var);
 			void setVar(char* identifier, char* val);
 			void setMethod(char* identifier, List<char*> args, List<Token*> tokens);
-			void registerDelegate(const char* identifier, void (*func)(List<char*> args));
+			void registerDelegate(const char* identifier, void (*func)(void* a, List<char*> args));
 			void setScope(Object* scope);		
 			void setScope(char* scope);
 			void resetScope(void);
@@ -150,7 +150,7 @@ namespace fjs {
 		}
 	}
 
-	void SystemContext::registerDelegate(const char* identifier, void (*func)(List<char*> args)) {
+	void SystemContext::registerDelegate(const char* identifier, void (*func)(void* p, List<char*> args)) {
 		JSDelegate* delegate = new JSDelegate(identifier, func);
 		this->delegates.add(delegate);
 	}

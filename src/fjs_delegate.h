@@ -7,23 +7,22 @@ namespace fjs {
 	// The method delegate maps a c++ method to a javascript method.
 	class JSDelegate {
 		private:
-			void (*ptr)(List<char*> args);
+			void (*ptr)(void* caller, List<char*> args);
 			
 		public:
 			string* name;
 			JSDelegate();
-			JSDelegate(const char* identifier, void (*func)(List<char*> args));
-			void invoke(void);
-			void invoke(List<char*> args);		
+			JSDelegate(const char* identifier, void (*func)(void* parser, List<char*> args));
+			void invoke(void* p, List<char*> a);		
 	};
 
-	JSDelegate::JSDelegate(const char* identifier, void (*func)(List<char*> args)) {
+	JSDelegate::JSDelegate(const char* identifier, void (*func)(void* parser, List<char*> args)) {
 		this->name = new string(identifier);
 		this->ptr = func;
 	}
 
-	void JSDelegate::invoke(List<char*> args) {
-		this->ptr(args);
+	void JSDelegate::invoke(void* parser, List<char*> args) {
+		this->ptr(parser, args);
 	}
 }
 
