@@ -8,15 +8,13 @@ namespace fjs {
 	// A stack frame is an entire collection of variables and methods
 	// and scope to run a series of tokens.
 	class StackFrame {
-		public: 
-		// Properties
+		public:
 			Token* sym;
 			Object* container;
 			List<Token*> symbols;
 			Stack<Token*> stack;
 			int index;
 			
-		// Methods
 			StackFrame(List<Token*> tokens) {
 				this->symbols = tokens;
 			}

@@ -13,7 +13,7 @@ namespace fjs {
 		// Always use the top item in the stack.
 		if ( this->frames.getLength() > 0 ) {
 			this->current = frames.pop();
-			
+			this->context->currentFrame = this->current;
 		}
 		
 		if (this->current->index < this->current->symbols.getLength()) {
@@ -25,9 +25,11 @@ namespace fjs {
 			// If we have a new frame, get it. Otherwise return null.
 			if (this->frames.getLength() > 0) {
 				this->current = frames.pop();
+				this->context->currentFrame = this->current;
 				frames.push(this->current);
 			} else {
 				this->current = (StackFrame*)NULL;
+				this->context->currentFrame = this->current;
 			}
 		}
 		
@@ -63,22 +65,23 @@ namespace fjs {
 		
 		if ( s == frame->sym->sym ) {
 			frame->stack.push(frame->sym);
-			this->nextsym();
-			return 1;
+			return this->nextsym();
 		}
 		
 		return 0;
 	}
 
-	void JSParser::nextsym() {
+	int JSParser::nextsym() {
 		StackFrame* frame = this->getFrame();
-		if ( frame == (StackFrame*)NULL) return;
+		if ( frame == (StackFrame*)NULL) return 0;
 		
-		if ( current->index < current->symbols.getLength() ) {
+		if ( frame->index < frame->symbols.getLength() ) {
 			frame->sym = current->symbols.getAt(current->index++);
+			return 1;
 		} else {
 			frame->index++;
 			this->getFrame();
+			return 1;
 		}
 	}
 
@@ -100,7 +103,7 @@ namespace fjs {
 			// If there were more strings, then concat them.
 			if ( current->stack.getLength() > 0 ) {
 				Token* target = current->stack.pop();
-				if ( target->sym == stringsym || target->sym == number )
+				if ( target->sym == stringsym )
 					val->append(target->val);
 			}
 			
@@ -109,24 +112,21 @@ namespace fjs {
 			assigned = true;
 		} else if (expect(ident)) {
 			char* name = current->stack.pop()->val;
-			if ( context->scope == (Object*)NULL ) context->scope = current->container;
 			value = context->getVar(name)->val->toString();
 			assigned = true;
 		}
 			
+		// Pop this frame.
+		frames.pop();
+		
+		// Load the old one.
+		getFrame();
+		
 		// Pop the current frame off.
 		if ( assigned ) {
-			// Pop this frame.
-			frames.pop();
-			
-			// Load the old one.
-			getFrame();
-			
 			// Set the thing.
 			current->stack.push(new Token(stringsym, value));
-			
 		}
-		
 	}
 
 	void JSParser::membercall() {
@@ -143,13 +143,13 @@ namespace fjs {
 				context->setScope(parent);
 				current->stack.push(new Token(member, name));
 				assignment();
+				return;
 			} else if (accept(lparen)) {
 				char* parent = current->stack.pop()->val;
 				context->setScope(context->getVar(parent));
-				Object* obj = context->getVar(parent);
 				frame->stack.push(new Token(ident, name));
-				
 				invoke();
+				return;
 			} else {
 				// Accessing a property!
 				Object* obj = context->getVar(name);
@@ -161,6 +161,7 @@ namespace fjs {
 		} else if (accept(prototypesym)) {
 			if ( accept(period)) {
 				membercall();
+				return;
 			}
 		} else if ( accept(callsym)) {
 			char* methodName = frame->stack.pop()->val;
@@ -206,9 +207,11 @@ namespace fjs {
 				// Traversing a member.
 				context->setScope(memberName);
 				this->membercall();
+				return;
 			} else {
 				// Method call?
 				this->invoke();
+				return;
 			}
 			
 		} else if (this->expect(semicolon)) {
@@ -217,6 +220,7 @@ namespace fjs {
 		} else if (this->accept(functionsym)) {
 			if (this->expect(ident)) {
 				this->function();
+				return;
 			} 
 		} else if (accept(returnsym)) {
 			doreturn();
@@ -256,7 +260,6 @@ namespace fjs {
 					Object* instance = new Object(identifier, (char*)"\0");
 					
 					// Object we are basing this off of.
-					if ( context->scope == (Object*)NULL ) context->scope = current->container;
 					Object* obj = context->getVar(objectName);
 					
 					// Verify the base object is real.
@@ -271,7 +274,8 @@ namespace fjs {
 					// Call the constructor.
 					if ( obj->tokens.getLength() > 0 ) {
 						current->stack.push(new Token(ident, obj->name->toString()));
-						invoke();
+						allocate(obj->tokens);
+						//invoke();
 					}
 				}
 				return;
@@ -285,16 +289,18 @@ namespace fjs {
 				} else {
 					getString();
 				}
-			} else if (expect(stringsym) || expect(ident)) {
+			} else if (expect(stringsym)) {// || expect(ident)) {
 				// Get the next identifier added to the stack, if applicable.
 				getString();
 			}
-		
-			char* val = frame->stack.pop()->val;
-			// Do the logic!
-			if ( context->scope == (Object*)NULL ) context->scope = current->container;
-			this->context->setVar(identifier, val);
+			
+			if ( frame->stack.getLength() > 0 ) {
+				char* val = frame->stack.pop()->val;
+				// Do the logic!
+				this->context->setVar(identifier, val);
+			}
 		}
+		
 	}
 
 	bool JSParser::isTrue(string* token) {
@@ -399,6 +405,8 @@ namespace fjs {
 	void JSParser::maths() {
 		int value = 0;
 		char* left = current->stack.pop()->val;
+		current->stack.push(new Token(number, left));
+		
 		if ( parseInt(new string(left), &value) ) {
 			Token* token = (Token*)NULL;
 
@@ -431,9 +439,9 @@ namespace fjs {
 					}
 				}
 			}
-		}
+			current->stack.push(new Token(number, itoa(value)));
+		} 
 		
-		current->stack.push(new Token(number, itoa(value)));
 		if (current->sym->sym == plus || current->sym->sym == minus || current->sym->sym == times )
 			maths();
 		if (accept(lparen)) {
@@ -520,7 +528,6 @@ namespace fjs {
 			} else if (expect(ident)) {
 				if ( frame->stack.getLength() > 0 ) {
 					char* name = frame->stack.pop()->val;
-					if ( context->scope == (Object*)NULL ) context->scope = current->container;
 					value->append(context->getVar(name)->val->toString());
 				}
 			}
@@ -545,7 +552,6 @@ namespace fjs {
 			if (this->expect(ident)) {
 				// Copy the variable.
 				char* identName = frame->stack.pop()->val;
-				if ( context->scope == (Object*)NULL ) context->scope = current->container;
 				Object* var = context->getVar(identName);
 				if ( var == (Object*)NULL ) {
 					// Check methods.
@@ -560,8 +566,7 @@ namespace fjs {
 				
 				// Check if it's a member.
 				if (current->sym->sym == period ) {
-					char* identVal = var->val->toString();
-					frame->stack.push(new Token(stringsym, identVal));
+					context->setScope(identName);
 					membercall();
 					methods.add(new Object(var->name->toString(), frame->stack.pop()->val));
 					continue;
@@ -635,7 +640,6 @@ namespace fjs {
 					if ( variable->tokens.getLength() > 0 ) {
 						context->setMethod(varName, variable->arguments, variable->tokens);		
 					} else {
-						if ( context->scope == (Object*)NULL ) context->scope = current->container;
 						char* varVal = variable->val->toString();
 						context->setVar(varName, varVal);
 					}

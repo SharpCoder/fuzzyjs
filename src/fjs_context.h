@@ -3,6 +3,7 @@
 
 #include "fjs_object.h"
 #include "fjs_delegate.h"
+#include "fjs_stackframe.h"
 
 namespace fjs {
 
@@ -11,6 +12,7 @@ namespace fjs {
 			List<JSDelegate*> delegates;
 			List<Object*> variables;
 			List<Object*> methods;
+			StackFrame* currentFrame;
 			Object* scope;
 			Object* getVar(char* identifier);
 			void addVar(Object* var);
@@ -29,10 +31,14 @@ namespace fjs {
 	void SystemContext::addVar(Object* var) {
 		if ( var == (Object*)NULL ) return;
 		Object* old = this->getVar(var->name->toString());
-		if ( old != (Object*)NULL )
+		if ( old != (Object*)NULL ) {
 			*old = *var;
-		else
+		}else {
+			if (scope != (Object*)NULL )
+				var->parent = scope;
+			
 			this->variables.add(var);
+		}
 	}
 
 	void SystemContext::setScope(char* member) {
@@ -40,8 +46,10 @@ namespace fjs {
 		
 		if ( this->scope == (Object*)NULL ) {
 			Object* target = this->getVar(member);
-			if ( target == (Object*)NULL)
+			if ( target == (Object*)NULL) {
 				target = new Object(member, (char*)"\0");
+				this->variables.add(target);
+			}
 			scope = target;
 			return;
 		} else {
@@ -51,7 +59,8 @@ namespace fjs {
 			if ( target == (Object*)NULL ) {
 				target = getVar(member);
 				if ( target == (Object*)NULL ) {
-					target = new Object(member, (char*)"\0");	
+					target = new Object(member, (char*)"\0");
+					this->variables.add(target);	
 				}
 			}
 			
@@ -100,12 +109,10 @@ namespace fjs {
 
 	Object* SystemContext::getVar(char* identifier) {
 		string* name = new string(identifier);
-
 		// Check in the current scope.
 		if ( scope != (Object*)NULL ) {
 			Object* target = scope->getMember(identifier);
 			if ( target != (Object*)NULL ) {
-				printf("found %s in %s\n", identifier, scope->name->toString());
 				return target;
 			}
 			
@@ -117,6 +124,10 @@ namespace fjs {
 		// Check in the variable register.
 		for ( int i = 0; i < variables.getLength(); i++ ) {
 			Object* var = variables.getAt(i);
+			if ( scope != (Object*)NULL )
+				if ( var->parent != scope )
+					continue;
+					
 			if (strcmp(name, var->name))
 				return var;
 		}
@@ -127,13 +138,14 @@ namespace fjs {
 	void SystemContext::setVar(char* identifier, char* val) {
 		Object* oldvar = getVar(identifier);
 		Object* newvar = new Object(identifier, val);
-		
+
 		// Update old references, if applicable.
-		if (oldvar != (Object*)NULL) {			
-			oldvar->val->clear();
-			oldvar->val->append(val);
-			free(newvar);
-		} else {
+		if (oldvar != (Object*)NULL) {
+			newvar->parent = oldvar->parent;
+			*oldvar = *newvar;
+		} else {		
+			if (scope != (Object*)NULL )
+				newvar->parent = scope;
 			this->variables.add(newvar);
 		}
 	}
@@ -180,7 +192,7 @@ namespace fjs {
 		
 		// Next, look at variables.
 		for (int i =0; i < this->variables.getLength(); i++ ) {
-			Object* object = this->variables.getAt(i);
+			Object* object = this->variables.getAt(i);					
 			if ( strcmp(object->name, methodName)) {
 				if ( object->tokens.getLength() > 0 )
 					return (void*)object;

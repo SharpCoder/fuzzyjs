@@ -105,8 +105,8 @@ public:
 	void testObjectInstantiation() {
 		resetTest();
 		string* code = new string();
-		code->append("var obj = function() { this.id = 10; assert(this.id, '10'); }");
-		code->append("var inst = new obj();");
+		code->append("var obj = function() { this.objId = 10; assert(this.objId, '10'); }");
+		code->append("var newInst = new obj();");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);
 	}
@@ -118,11 +118,25 @@ public:
 		code->append("var inst = new obj();");
 		code->append("inst.id = '10';");
 		code->append("assert(inst.id, '10');");
-		code->append("var inst2 = new obj();");
+		code->append("var bah = new obj();");
 		code->append("assert(inst.id, '10');");
+		code->append("assert(bah.id, 100);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);		
 	}
+	
+	void testThisKeywordAdvanced() {
+		resetTest();
+		string* code = new string();
+		code->append("var advObj = function() { this.id = 100; assert(this.id, '100'); }");
+		code->append("advObj.prototype.add = function() { this.id = 20; };");
+		code->append("var bobby = new advObj();");
+		code->append("bobby.add();");
+		code->append("assert(bobby.id,20);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);	
+	}
+	
 	
 	void testBasicLogic() {
 		resetTest();

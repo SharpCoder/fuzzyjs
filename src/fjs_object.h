@@ -13,6 +13,7 @@ namespace fjs {
 			List<Token*> tokens;
 			List<char*> arguments;
 			List<Object*> members;
+			Object* parent;
 			
 			// The name of this object.
 			string* name;
@@ -45,14 +46,16 @@ namespace fjs {
 				
 				// Copy all of the members.
 				for( int i=0; i<object->members.getLength(); i++) {
-					this->members.add(object->members.getAt(i));
+					// Create a new member.
+					Object* oldMember = object->members.getAt(i);
+					this->members.add(oldMember);
 				 }
 			}
 			
 			void addMember(Object* member) {
 				for ( int i = 0; i < this->members.getLength(); i++ ) {
 					Object* m = this->members.getAt(i);
-					if ( strcmp(m->name, member->name) ) {
+					if (strcmp(m->name, member->name)) {
 						*m = *member;
 						return;
 					}

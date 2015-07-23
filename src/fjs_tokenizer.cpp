@@ -26,6 +26,7 @@ namespace fjs {
 					prev = convert(prev, temp);
 					Token* token = new Token(prev, temp->toString());
 					if (!processSymbol(token, &result, code, &i)) {
+						prev = token->sym;
 						result.add(token);
 					}
 				}
@@ -42,6 +43,7 @@ namespace fjs {
 					Token* token = new Token();
 					token->sym = prev; token->val = (new string(c))->toString();
 					if (!processSymbol(token, &result, code, &i)) {
+						prev = token->sym;
 						result.add(token);
 					}
 				}

@@ -28,7 +28,7 @@ namespace fjs {
 			// Methods for parsing.
 			int accept(Symbol s);
 			int expect(Symbol s);
-			void nextsym(void);
+			int nextsym(void);
 			void block(void); 
 			void expression(void);
 			void assignment(void);
