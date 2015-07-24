@@ -231,4 +231,25 @@ public:
 		TS_ASSERT(testRan);		
 	}
 	
+	void testVariableDecrementWithoutOperator() {
+		resetTest();
+		string* code = new string();
+		code->append("var output = 3;");
+		code->append("output = output - 1;");
+		code->append("assert(output,2);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);
+	}
+	
+	void testDecrementWithOperator() {
+		resetTest();
+		string* code = new string();
+		code->append("var output = 5;");
+		code->append("output--;");
+		code->append("output--;");
+		code->append("assert(output--,2);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
 };

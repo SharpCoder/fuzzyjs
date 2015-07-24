@@ -238,7 +238,7 @@ namespace fjs {
 				current->stack.push(new Token(ident, memberName));
 				// Rassignment
 				assignment();
-			} else if (current->sym->sym == plus) {
+			} else if (current->sym->sym == plus || current->sym->sym == minus) {
 				context->setScope(memberName);
 				current->stack.push(new Token(ident, memberName));
 				assignment();
@@ -366,6 +366,20 @@ namespace fjs {
 					int val = 0;
 					if ( parseInt(var->val, &val)) {
 						val++;
+						var->val = new string(itoa(val));
+					}
+				}
+			}
+		} else if ( current->sym->sym == minus && current->peek->sym == minus ) {
+			accept(minus);
+			accept(minus);
+			if ( current->stack.getLength() > 0 ) {
+				char* name = current->stack.pop()->val;
+				Object* var = context->getVar(name);
+				if ( var != (Object*)NULL){ 
+					int val = 0;
+					if ( parseInt(var->val, &val)) {
+						val--;
 						var->val = new string(itoa(val));
 					}
 				}
