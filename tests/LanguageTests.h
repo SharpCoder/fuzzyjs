@@ -220,4 +220,15 @@ public:
 		TS_ASSERT(testRan);
 	}
 	
+	void testVariableIncrementWithOperator() {
+		resetTest();
+		string* code = new string();
+		code->append("var output = 0;");
+		code->append("output++;");
+		code->append("output++;");
+		code->append("assert(output++,3);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
 };

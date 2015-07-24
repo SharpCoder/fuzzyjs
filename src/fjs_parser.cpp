@@ -95,6 +95,11 @@ namespace fjs {
 		if ( current == (StackFrame*)NULL) return 0;
 		if ( current->index < current->symbols.getLength() ) {
 			current->sym = current->symbols.getAt(current->index++);
+			
+			// Process the peek.
+			if ( current->index < current->symbols.getLength() )
+				current->peek = current->symbols.getAt(current->index);
+				
 			return 1;
 		} else {
 			current->index++;
@@ -233,6 +238,10 @@ namespace fjs {
 				current->stack.push(new Token(ident, memberName));
 				// Rassignment
 				assignment();
+			} else if (current->sym->sym == plus) {
+				context->setScope(memberName);
+				current->stack.push(new Token(ident, memberName));
+				assignment();
 			} else {
 				// Method call?
 				current->stack.push(new Token(ident, memberName));
@@ -340,8 +349,30 @@ namespace fjs {
 			}
 		}
 		
+		increment();
 	}
-
+	
+	void JSParser::increment() {
+		getFrame();
+		expect(ident);
+		if ( current->sym->sym == plus && current->peek->sym == plus ) {
+			accept(plus);
+			accept(plus);
+			// Increment operator
+			if ( current->stack.getLength() > 0 ) {
+				char* name = current->stack.pop()->val;
+				Object* var = context->getVar(name);
+				if ( var != (Object*)NULL){ 
+					int val = 0;
+					if ( parseInt(var->val, &val)) {
+						val++;
+						var->val = new string(itoa(val));
+					}
+				}
+			}
+		}
+	}
+	
 	bool JSParser::isTrue(string* token) {
 		if (token->equals("1")) return true;
 		else if ( token->equals("true")) return true;
@@ -532,6 +563,8 @@ namespace fjs {
 			} else if (expect(ident) || expect(stringsym)) {
 				
 				char* name = current->stack.pop()->val;
+				current->stack.push(new Token(ident, name));
+				increment();
 				
 				// Check if it's a method.
 				if (this->context->getMethod(name) != (void*)NULL ) {
@@ -605,6 +638,8 @@ namespace fjs {
 					
 					// Copy the variable.
 					char* identName = frame->stack.pop()->val;
+					current->stack.push(new Token(ident, identName));
+					increment();
 					Object* var = context->getVar(identName);
 					if ( var == (Object*)NULL ) {
 						// Check methods.
@@ -629,7 +664,7 @@ namespace fjs {
 					// Otherwise, it's a variable.	
 					char* identVal = var->val->toString();
 					frame->stack.push(new Token(var->sym, identVal));
-					getString();
+					getString();					
 					identVal = current->stack.pop()->val;
 					methods.add(new Object(var->name->toString(), identVal));
 				} else if (this->expect(stringsym)){ 

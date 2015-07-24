@@ -10,6 +10,7 @@ namespace fjs {
 	class StackFrame {
 		public:
 			Token* sym;
+			Token* peek;
 			Object* container;
 			List<Token*> symbols;
 			Stack<Token*> stack;

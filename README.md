@@ -27,6 +27,7 @@ The following language features are currently supported (this list will be updat
 - basic math: plus, minus, multiply (division is a different beast that I will implement later)
 - boolean logic operators
 - (System Command) parseInt
+- increment operators
 
 More to come!
 

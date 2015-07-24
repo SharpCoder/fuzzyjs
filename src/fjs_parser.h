@@ -44,6 +44,7 @@ namespace fjs {
 			void doparseint(void);
 			void ifstatement(void);
 			void program(void);
+			void increment(void);
 
 			JSParser();
 			void parse(char* code);
