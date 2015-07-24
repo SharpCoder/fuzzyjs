@@ -22,6 +22,8 @@ namespace fjs {
 	
 	JSParser::JSParser() {
 		this->context = new SystemContext();
+		
+		// Register system methods here.
 		this->registerDelegate("parseInt", js_parseInt);
 	}
 
@@ -103,6 +105,7 @@ namespace fjs {
 
 	void JSParser::doreturn() {
 		char* value;
+		Symbol sym = stringsym;
 		bool assigned = false;
 		getFrame();
 		
@@ -128,7 +131,9 @@ namespace fjs {
 			assigned = true;
 		} else if (expect(ident)) {
 			char* name = current->stack.pop()->val;
-			value = context->getVar(name)->val->toString();
+			Object* obj = context->getVar(name);
+			sym = obj->sym;
+			value = obj->val->toString();
 			assigned = true;
 		}
 		
@@ -142,7 +147,7 @@ namespace fjs {
 		// Pop the current frame off.
 		if ( assigned ) {
 			// Set the thing.
-			current->stack.push(new Token(stringsym, value));
+			current->stack.push(new Token(sym, value));
 		}
 	}
 
@@ -172,7 +177,7 @@ namespace fjs {
 				Object* obj = context->getVar(name);
 				if ( obj != (Object*)NULL ) {
 					context->setScope(obj);
-					frame->stack.push(new Token(stringsym, obj->val->toString()));
+					frame->stack.push(new Token(obj->sym, obj->val->toString()));
 				}
 			}
 		} else if (accept(prototypesym)) {
@@ -223,6 +228,11 @@ namespace fjs {
 				context->setScope(memberName);
 				current->stack.push(new Token(member, memberName));
 				this->membercall();
+			} else if (current->sym->sym == eql) {
+				context->setScope(memberName);
+				current->stack.push(new Token(ident, memberName));
+				// Rassignment
+				assignment();
 			} else {
 				// Method call?
 				current->stack.push(new Token(ident, memberName));
@@ -307,8 +317,19 @@ namespace fjs {
 				if ( accept(period)) {
 					membercall();
 				} else {
-					invoke();
-					getString();
+					char* name = frame->stack.pop()->val;
+					frame->stack.push(new Token(ident, name));
+					if ( context->getMethod(name) != (Object*)NULL ) {
+						// Check if it's a method.
+						invoke();
+						getString();
+					} else {
+						char* val = context->getVar(name)->val->toString();
+						frame->stack.push(new Token(stringsym, val));
+						maths();
+						getString();
+					}
+					
 				}
 			}
 			
@@ -432,15 +453,26 @@ namespace fjs {
 			if (expect(plus) || expect(minus) || expect(times)) {
 				token = current->stack.pop();
 				int rightVal = 0;
+				bool process = false;
 				
 				// If we're adding or subtracting a number...
 				if (expect(lparen)) {
 					// If we get here, it's an order of operations thing.
 					expression();
 					// We need to handle this properly...
+					process = true;
+				} else if (expect(ident)) {
+					char* varName = current->stack.pop()->val;
+					Object* var = context->getVar(varName);
+					if ( var != (Object*)NULL ) {
+						current->stack.push(new Token(number, var->val->toString()));
+						process = true;
+					}
+				} else if (expect(number)) {
+					process = true;
 				}
 				
-				if (expect(number)) {
+				if (process) {
 					char* right = current->stack.pop()->val;
 					if (parseInt(new string(right), &rightVal)) {		
 						switch(token->sym) {
@@ -454,7 +486,7 @@ namespace fjs {
 								value *= rightVal;
 							break;
 						}
-					}
+					}					
 				}
 			}
 			current->stack.push(new Token(number, itoa(value)));
@@ -462,9 +494,8 @@ namespace fjs {
 		
 		if (current->sym->sym == plus || current->sym->sym == minus || current->sym->sym == times )
 			maths();
-		if (accept(lparen)) {
+		if (accept(lparen))
 			expression();
-		}
 	}
 
 	void JSParser::comparison() {
@@ -597,8 +628,9 @@ namespace fjs {
 					
 					// Otherwise, it's a variable.	
 					char* identVal = var->val->toString();
-					frame->stack.push(new Token(stringsym, identVal));
+					frame->stack.push(new Token(var->sym, identVal));
 					getString();
+					identVal = current->stack.pop()->val;
 					methods.add(new Object(var->name->toString(), identVal));
 				} else if (this->expect(stringsym)){ 
 					getString();

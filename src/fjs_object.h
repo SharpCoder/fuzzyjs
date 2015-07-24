@@ -21,23 +21,29 @@ namespace fjs {
 			// The value, in case this is a variable?
 			string* val;
 			
+			// Use to store whether string or number.
+			Symbol sym;
+			
 			// Constructors.
 			Object() { }
 			
 			Object(char* identifier, char* value) {
 				this->name = new string(identifier);
 				this->val = new string(value);
+				this->sym = stringsym;
 			}
 			
 			Object(char* identifier, List<Token*> methodTokens) {
 				this->name = new string(identifier);
 				this->tokens = methodTokens;
+				this->sym = stringsym;
 			}
 			
 			Object(char* identifier, List<char*> args, List<Token*> methodTokens) {
 				this->name = new string(identifier);
 				this->arguments = args;
 				this->tokens = methodTokens;
+				this->sym = stringsym;
 			}
 			
 			void copy(Object* object) {
@@ -56,6 +62,9 @@ namespace fjs {
 				for ( int i = 0; i < this->members.getLength(); i++ ) {
 					Object* m = this->members.getAt(i);
 					if (strcmp(m->name, member->name)) {
+						int val = 0;
+						if ( parseInt(member->val, &val))
+							member->sym = number;
 						*m = *member;
 						return;
 					}
