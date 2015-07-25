@@ -18,6 +18,7 @@ namespace fjs {
 			
 			StackFrame(List<Token*> tokens) {
 				index = 0;
+				sym = tokens.getAt(0);
 				this->symbols = tokens;
 			}
 	};

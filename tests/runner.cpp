@@ -101,7 +101,7 @@ public:
 
 static class TestDescription_suite_LanguageTests_testFunctionPrototypes : public CxxTest::RealTestDescription {
 public:
- TestDescription_suite_LanguageTests_testFunctionPrototypes() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 160, "testFunctionPrototypes" ) {}
+ TestDescription_suite_LanguageTests_testFunctionPrototypes() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 161, "testFunctionPrototypes" ) {}
  void runTest() { suite_LanguageTests.testFunctionPrototypes(); }
 } testDescription_suite_LanguageTests_testFunctionPrototypes;
 
@@ -159,9 +159,27 @@ public:
  void runTest() { suite_LanguageTests.testDecrementWithOperator(); }
 } testDescription_suite_LanguageTests_testDecrementWithOperator;
 
+static class TestDescription_suite_LanguageTests_testLessThanOperator : public CxxTest::RealTestDescription {
+public:
+ TestDescription_suite_LanguageTests_testLessThanOperator() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 266, "testLessThanOperator" ) {}
+ void runTest() { suite_LanguageTests.testLessThanOperator(); }
+} testDescription_suite_LanguageTests_testLessThanOperator;
+
+static class TestDescription_suite_LanguageTests_testLessThanOperatorWithVariables : public CxxTest::RealTestDescription {
+public:
+ TestDescription_suite_LanguageTests_testLessThanOperatorWithVariables() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 275, "testLessThanOperatorWithVariables" ) {}
+ void runTest() { suite_LanguageTests.testLessThanOperatorWithVariables(); }
+} testDescription_suite_LanguageTests_testLessThanOperatorWithVariables;
+
+static class TestDescription_suite_LanguageTests_testGreaterThanOperator : public CxxTest::RealTestDescription {
+public:
+ TestDescription_suite_LanguageTests_testGreaterThanOperator() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 286, "testGreaterThanOperator" ) {}
+ void runTest() { suite_LanguageTests.testGreaterThanOperator(); }
+} testDescription_suite_LanguageTests_testGreaterThanOperator;
+
 static class TestDescription_suite_LanguageTests_testForLoop : public CxxTest::RealTestDescription {
 public:
- TestDescription_suite_LanguageTests_testForLoop() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 266, "testForLoop" ) {}
+ TestDescription_suite_LanguageTests_testForLoop() : CxxTest::RealTestDescription( Tests_LanguageTests, suiteDescription_LanguageTests, 295, "testForLoop" ) {}
  void runTest() { suite_LanguageTests.testForLoop(); }
 } testDescription_suite_LanguageTests_testForLoop;
 

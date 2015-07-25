@@ -23,6 +23,7 @@ namespace fjs {
 			StackFrame* current;
 			 // Method for creating a new stack frame.
 			void allocate(List<Token*> tokens);
+			void execute(List<Token*>);
 			StackFrame* getFrame(void);
 			bool isTrue(string* token);
 			
@@ -45,7 +46,8 @@ namespace fjs {
 			void ifstatement(void);
 			void program(void);
 			void increment(void);
-
+			void forloop(void);
+			
 			JSParser();
 			void parse(char* code);
 			void registerDelegate(const char* identifier, void (*func)(void*,List<char*>));

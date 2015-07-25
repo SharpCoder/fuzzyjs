@@ -45,7 +45,8 @@ namespace fjs {
 		if (this->current == (StackFrame*)NULL ) {
 			// If we have a new frame, get it. Otherwise return null.
 			if (this->frames.getLength() > 0) {
-				this->current = frames.pop();
+				StackFrame* next = frames.pop();
+				this->current = next;
 				this->context->currentFrame = this->current;
 				frames.push(this->current);
 			} else {
@@ -106,6 +107,8 @@ namespace fjs {
 			this->getFrame();
 			return 1;
 		}
+		
+		return 0;
 	}
 
 	void JSParser::doreturn() {
@@ -201,6 +204,115 @@ namespace fjs {
 		}
 			
 	}
+	
+	void JSParser::execute(List<Token*> tokens) {
+		// Get the parent frame.
+		StackFrame* parentFrame = getFrame();
+		
+		// First, allocate a new stack.
+		allocate(tokens);
+		context->scope = (Object*)NULL;
+		StackFrame* newFrame = getFrame();
+		nextsym();
+		while(getFrame() != parentFrame) {
+			// While the stackframe hasn't changed...
+			// Then run block.
+			block();
+			if (getFrame() == parentFrame) break;
+		}
+		
+		if ( newFrame->stack.getLength() > 0 ) {
+			current->stack.push(newFrame->stack.pop());
+		}
+	}
+	
+	void JSParser::forloop() {
+		getFrame();
+	
+		// Keep track of the various tokens.
+		List<Token*> initialization;
+		List<Token*> condition;
+		List<Token*> action;
+		List<Token*> code;
+		Stack<bool> brackets;
+		
+		// Add the return keyword.
+		//condition.add(new Token(returnsym, (char*)"return"));
+		accept(lparen);
+		
+		// for( var i = 0;
+		while(!accept(semicolon)) {
+			initialization.add(current->sym);
+			nextsym();
+		}
+		
+		initialization.add(new Token(semicolon, (char*)";"));
+		
+		// i < 10;
+		while(!accept(semicolon)) {
+			condition.add(current->sym);
+			nextsym();
+		}
+		
+		condition.add(new Token(semicolon, (char*)";"));
+		
+		
+		// i++
+		while(!accept(rparen)) {
+			action.add(current->sym);
+			nextsym();
+		}
+		
+		action.add(new Token(semicolon, (char*)";"));
+		
+		// The code.
+		if (accept(lbracket)) {
+			brackets.push(true);
+			while (brackets.getLength() > 0) {
+				if (accept(lbracket)) {
+					brackets.push(true);
+				} else if (accept(rbracket)) {
+					brackets.pop();
+				} else {
+					code.add(current->sym);
+					nextsym();
+				}
+			}
+			
+			// No idea why this is required. The going theory
+			// is that each of these loop parts eats forward 1 too many
+			// symbols...
+			current->index -= 3;
+		}
+		
+		// Do the initialization.
+		// TODO: Make a run method function that encapsulates list<token>
+		execute(initialization);
+		
+		// Do the for loop.
+		bool success = false;
+		do {
+			
+			// Run the action
+			execute(action);
+			
+			// Run the code.
+			execute(code);
+			
+			// Run the condition.
+			execute(condition);
+
+			// Check the result.
+			if ( current->stack.getLength() > 0 ) {
+				char* val = current->stack.pop()->val;
+				if (!isTrue(new string(val))) break;
+			}	
+			
+			
+		} while(true);
+		
+		
+	}
 
 	void JSParser::block() {
 		
@@ -209,13 +321,12 @@ namespace fjs {
 		
 		if ( this->accept(scriptstartsym) ) {
 			// Start
-			
+			nextsym();
 		} else if (accept(thissym)) {
 			context->scope = current->container;
 			if (accept(period))  {
 				current->stack.push(new Token(member, context->scope->name->toString()));
-				membercall();
-				
+				membercall();	
 			}
 		} else if (accept(ifsym)) {
 			ifstatement();
@@ -242,6 +353,10 @@ namespace fjs {
 				context->setScope(memberName);
 				current->stack.push(new Token(ident, memberName));
 				assignment();
+			} else if ( current->sym->sym == lss || current->sym->sym == gtr ) {
+				context->setScope(memberName);
+				current->stack.push(new Token(ident, memberName));
+				logic();
 			} else {
 				// Method call?
 				current->stack.push(new Token(ident, memberName));
@@ -256,8 +371,12 @@ namespace fjs {
 			} 
 		} else if (accept(returnsym)) {
 			doreturn();
+		} else if (accept(forsym)) {
+			forloop();
 		} else if (this->accept(lparen)) {
 			this->expression();
+		} else if (this->expect(number)) {
+			logic();
 		} else {
 			// Compiler error?
 			this->nextsym();
@@ -315,6 +434,7 @@ namespace fjs {
 				
 				int output = 0;
 				if ( parseInt(new string(value), &output)) {
+					logic();
 					maths();
 				} else {
 					getString();
@@ -331,12 +451,14 @@ namespace fjs {
 					if ( context->getMethod(name) != (Object*)NULL ) {
 						// Check if it's a method.
 						invoke();
+						logic();
 						maths();
 						getString();
 						
 					} else {
 						char* val = context->getVar(name)->val->toString();
 						frame->stack.push(new Token(stringsym, val));
+						logic();
 						maths();
 						getString();
 					}
@@ -396,8 +518,16 @@ namespace fjs {
 	}
 
 	void JSParser::logic() {
-		Token* left = current->stack.pop();	
+		Token* left = current->stack.pop();
+		char* leftValue = left->val;
 		Symbol op = oddsym;
+		
+		if ( left->sym == ident ) {
+			// Get teh value of it.
+			Object* obj = context->getVar(left->val);
+			if (obj != (Object*)NULL )
+				leftValue = obj->val->toString();
+		}
 		
 		if (accept(andsym)) {		
 			 if (accept(andsym)) {
@@ -411,6 +541,10 @@ namespace fjs {
 			if (accept(eql)) {
 				op = notsym;
 			}
+		} else if (accept(lss)) {
+			op = lss;
+		} else if (accept(gtr)) {
+			op = gtr;
 		}
 		
 		if ( op != oddsym ) {
@@ -419,6 +553,15 @@ namespace fjs {
 			} else if (expect(ident)) {
 				if ( current->sym->sym == lparen ) {
 					invoke();
+				} else {
+					// Get the value.
+					char* varName = current->stack.pop()->val;
+					Object* obj = context->getVar(varName);
+					if ( obj != (Object*)NULL ){ 
+						current->stack.push(new Token(number, obj->val->toString()));
+					} else {
+						current->stack.push(new Token(ident, varName));
+					}
 				}
 			} else if (expect(stringsym) || expect(number)) {
 				// Do nothing, we're just going to pop them.
@@ -427,8 +570,11 @@ namespace fjs {
 			Token* right = current->stack.pop();
 			
 			// && comparison.
-			bool l = isTrue(new string(left->val));
-			bool r = isTrue(new string(right->val));
+			int lVal = 0, rVal = 0;
+			string* leftVal = new string(leftValue);
+			string* rightVal = new string(right->val);
+			bool l = isTrue(leftVal);
+			bool r = isTrue(rightVal);
 			
 			if (op == andsym) {
 				if ( l && r ) current->stack.push(new Token(stringsym, (char*)"true"));
@@ -439,7 +585,21 @@ namespace fjs {
 			} else if ( op == notsym ) {
 				if ( l != r ) current->stack.push(new Token(stringsym, (char*)"true"));
 				else current->stack.push(new Token(stringsym, (char*)"false"));
+			} else if (op == lss) {
+				if (parseInt(leftVal, &lVal) && parseInt(rightVal, &rVal)){
+					if (lVal < rVal) current->stack.push(new Token(stringsym, (char*)"true"));
+					else current->stack.push(new Token(stringsym, (char*)"false"));
+				}
+			} else if (op == gtr) {
+				if (parseInt(leftVal, &lVal) && parseInt(rightVal, &rVal)){
+					if (lVal > rVal) current->stack.push(new Token(stringsym, (char*)"true"));
+					else current->stack.push(new Token(stringsym, (char*)"false"));
+				}
+			} else {
+				current->stack.push(left);
 			}
+		} else {
+			current->stack.push(left);
 		}
 		
 		if ( current->sym->sym == andsym || current->sym->sym == pipesym || current->sym->sym == notsym )

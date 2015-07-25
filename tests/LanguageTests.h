@@ -152,6 +152,7 @@ public:
 		code->append("advObj.prototype.add = function() { this.id = 20; };");
 		code->append("var bobby = new advObj();");
 		code->append("bobby.add();");
+		code->append("printf(bobby.id);");
 		code->append("assert(bobby.id,20);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);	
@@ -262,14 +263,43 @@ public:
 		TS_ASSERT(testRan);		
 	}
 	
+	void testLessThanOperator() {
+		resetTest();
+		string* code = new string();
+		code->append("var output = 5 < 10;");
+		code->append("assert(output, true);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
+	void testLessThanOperatorWithVariables() {
+		resetTest();
+		string* code = new string();
+		code->append("var left = 5;");
+		code->append("var right = 10;");
+		code->append("var output = left < right;");
+		code->append("assert(output, true);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
+	void testGreaterThanOperator() {
+		resetTest();
+		string* code = new string();
+		code->append("var output = 5 > 10;");
+		code->append("assert(output, false);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
 	void testForLoop() {
 		resetTest();
 		string* code = new string();
 		code->append("var myVar = 0;");
 		code->append("for ( var i = 0; i < 10; i++ ) {");
-		code->append("myVar++;");
+		code->append("myVar = myVar + 2;");
 		code->append("}");
-		code->append("assert(myVar, 10);");
+		code->append("assert(myVar, 20);");
 		
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);		
