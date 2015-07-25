@@ -147,12 +147,12 @@ namespace fjs {
 		frames.pop();
 		
 		// Load the old one.
-		getFrame();
-		
+		StackFrame* f = getFrame();
+				
 		// Pop the current frame off.
 		if ( assigned ) {
 			// Set the thing.
-			current->stack.push(new Token(sym, value));
+			f->stack.push(new Token(sym, value));
 		}
 	}
 
@@ -331,7 +331,9 @@ namespace fjs {
 					if ( context->getMethod(name) != (Object*)NULL ) {
 						// Check if it's a method.
 						invoke();
+						maths();
 						getString();
+						
 					} else {
 						char* val = context->getVar(name)->val->toString();
 						frame->stack.push(new Token(stringsym, val));
@@ -648,6 +650,7 @@ namespace fjs {
 			// While we're not at the rparam, create a 
 			// list of arguments.
 			while (true) {
+			
 				if (expect(ident)) {
 					
 					// Copy the variable.
@@ -711,11 +714,8 @@ namespace fjs {
 					continue;
 				} else {
 					break;
-				}
-				
-			}
-			
-			this->accept(rparen);
+				}	
+			}			
 		}
 		
 		// Do the logic!
@@ -733,6 +733,7 @@ namespace fjs {
 			void* ref = (void*)this;
 			JSDelegate* delegate = (JSDelegate*)target;
 			delegate->invoke(ref, (List<char*>)arguments);
+			block();
 		} else {
 			// Invoke the js object.
 			Object* object = (Object*)target;
@@ -753,6 +754,7 @@ namespace fjs {
 					}
 				}
 				
+				nextsym();
 				block();
 				
 			} 

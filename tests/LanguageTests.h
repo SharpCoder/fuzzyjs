@@ -172,6 +172,16 @@ public:
 		//TS_ASSERT(testRan);	
 	}
 	
+	void testFunctionReturn() {
+		resetTest();
+		string* code = new string();
+		code->append("function addLove() { return 'love'; }");
+		code->append("var output = addLove() + 'craft!';");
+		code->append("assert(output, 'lovecraft!');");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);	
+	}
+	
 	void testBasicLogic() {
 		resetTest();
 		string* code = new string();
@@ -248,6 +258,19 @@ public:
 		code->append("output--;");
 		code->append("output--;");
 		code->append("assert(output--,2);");
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+	}
+	
+	void testForLoop() {
+		resetTest();
+		string* code = new string();
+		code->append("var myVar = 0;");
+		code->append("for ( var i = 0; i < 10; i++ ) {");
+		code->append("myVar++;");
+		code->append("}");
+		code->append("assert(myVar, 10);");
+		
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);		
 	}

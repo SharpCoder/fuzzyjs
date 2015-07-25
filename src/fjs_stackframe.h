@@ -17,6 +17,7 @@ namespace fjs {
 			int index;
 			
 			StackFrame(List<Token*> tokens) {
+				index = 0;
 				this->symbols = tokens;
 			}
 	};

@@ -73,6 +73,22 @@ namespace fjs {
 				return result;
 			}
 			
+						
+			T getAt(int index) {
+				if ( this->top == NULL ) return (T)NULL;
+				
+				if ( index == 0 ) {
+					return this->top->val;
+				} else {
+					iterator<T>* last = this->top;
+					do {
+						last = last->prev;
+						index--;
+					} while ( last->prev != NULL && index > 0 );
+					return last->val;
+				}
+			}
+			
 			int getLength() {
 				return this->length;
 			}
