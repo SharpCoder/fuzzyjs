@@ -430,12 +430,12 @@ namespace fjs {
 				return;
 			} else if (expect(number)) {
 				char* value = frame->stack.pop()->val;
-				frame->stack.push(new Token(stringsym, value));
+				frame->stack.push(new Token(number, value));
 				
 				int output = 0;
 				if ( parseInt(new string(value), &output)) {
-					logic();
 					maths();
+					logic();
 				} else {
 					getString();
 				}
@@ -596,14 +596,17 @@ namespace fjs {
 					else current->stack.push(new Token(stringsym, (char*)"false"));
 				}
 			} else {
+				current->stack.push(right);
 				current->stack.push(left);
 			}
+			
+			if ( current->sym->sym == andsym || current->sym->sym == pipesym || current->sym->sym == notsym )
+				logic();
+				
 		} else {
 			current->stack.push(left);
 		}
 		
-		if ( current->sym->sym == andsym || current->sym->sym == pipesym || current->sym->sym == notsym )
-			logic();
 	}
 
 	void JSParser::ifstatement() {
@@ -898,7 +901,9 @@ namespace fjs {
 			// Invoke the js object.
 			Object* object = (Object*)target;
 			if ( object != (Object*)NULL ) {
+				StackFrame* parent = getFrame();
 				this->allocate(object->tokens);
+				StackFrame* newFrame = getFrame();
 				
 				// Update all the arguments.
 				for ( int i = 0; i < methods.getLength(); i++ ) {
@@ -915,8 +920,10 @@ namespace fjs {
 				}
 				
 				nextsym();
-				block();
-				
+				while(true) {	
+					block();
+					if ( getFrame() == parent ) break;
+				}
 			} 
 		}
 		

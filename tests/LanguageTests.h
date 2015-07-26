@@ -152,7 +152,6 @@ public:
 		code->append("advObj.prototype.add = function() { this.id = 20; };");
 		code->append("var bobby = new advObj();");
 		code->append("bobby.add();");
-		code->append("printf(bobby.id);");
 		code->append("assert(bobby.id,20);");
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);	
@@ -168,9 +167,8 @@ public:
 		code->append("var output = bobby.identity();");
 		code->append("assert(output,'1');");
 		code->append("assert(bobby.id,'300');");
-		// I don't want to fix this right now...
-		//this->parser->parse(code->toString());
-		//TS_ASSERT(testRan);	
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);	
 	}
 	
 	void testFunctionReturn() {

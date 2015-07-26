@@ -28,6 +28,7 @@ The following language features are currently supported (this list will be updat
 - boolean logic operators
 - (System Command) parseInt
 - increment operators
+- for loops
 
 More to come!
 
