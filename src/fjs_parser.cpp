@@ -226,6 +226,60 @@ namespace fjs {
 		}
 	}
 	
+	void JSParser::whileloop() {
+		getFrame();
+		
+		List<Token*> condition;
+		List<Token*> code;
+		Stack<bool> brackets;
+		
+		accept(lparen);
+		
+		// while ( myVar < 10 ) {
+		while (!accept(rparen)) {
+			if (accept(lparen)) {
+				// Method invoke?
+				
+			} else {
+				condition.add(current->sym);
+				nextsym();
+			}
+		}
+		
+		condition.add(new Token(semicolon, (char*)";"));
+		
+		if (accept(lbracket)) {
+			// Parse out the code.
+			brackets.push(true);
+			while (brackets.getLength() > 0) {
+				if (accept(lbracket)) {
+					brackets.push(true);
+				} else if (accept(rbracket)) {
+					brackets.pop();
+				} else {
+					code.add(current->sym);
+					nextsym();
+				}
+			}
+			
+			
+			// No idea why this is required. The going theory
+			// is that each of these loop parts eats forward 1 too many
+			// symbols...
+			current->index -= 3;
+			
+			// Execute the code.
+			while(true) {
+				execute(code);
+				execute(condition);
+				if ( current->stack.getLength() > 0 ) {
+					char* val = current->stack.pop()->val;
+					if (!isTrue(new string(val))) break;
+				}
+			}
+		}
+	}
+	
 	void JSParser::forloop() {
 		getFrame();
 	
@@ -373,6 +427,8 @@ namespace fjs {
 			doreturn();
 		} else if (accept(forsym)) {
 			forloop();
+		} else if (accept(whilesym)) {
+			whileloop();
 		} else if (this->accept(lparen)) {
 			this->expression();
 		} else if (this->expect(number)) {

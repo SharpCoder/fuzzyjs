@@ -47,6 +47,7 @@ namespace fjs {
 			void program(void);
 			void increment(void);
 			void forloop(void);
+			void whileloop(void);
 			
 			JSParser();
 			void parse(char* code);

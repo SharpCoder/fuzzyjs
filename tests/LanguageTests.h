@@ -303,4 +303,18 @@ public:
 		TS_ASSERT(testRan);		
 	}
 	
+	void testWhileLoop() {
+		resetTest();
+		string* code = new string();
+		code->append("var myVar = 0;");
+		code->append("while ( myVar < 10 ) {");
+		code->append("myVar = myVar + 2;");
+		code->append("}");
+		code->append("assert(myVar, 10);");
+		
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);		
+		
+	}
+	
 };
