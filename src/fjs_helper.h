@@ -220,10 +220,17 @@ namespace fjs {
 	}
 
 	char* itoa(uint32 number) {
+		char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+		if ( number < 10  && number >= 0 ) {
+			char* result = (char*)malloc(sizeof(char) * 2);
+			result[0] = map[number];
+			result[1] = '\0';
+			return result;
+		}
+		
 		char digits = 0;
 		do { } while ( digits < 10 && (number / pow(10, (int)digits++)) != 0 );
-
-		char map[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+		
 		char* res = (char*)malloc((digits+1) * sizeof(char));
 		res[digits] = '\0';
 		int base = 0;

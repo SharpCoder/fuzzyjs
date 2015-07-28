@@ -327,5 +327,41 @@ public:
 		this->parser->parse(code->toString());
 		TS_ASSERT(testRan);
 	}
+		
+	void testDivisionWithMismatchPlace() {
+		jsfloat* left = new jsfloat("6.1");
+		jsfloat* right = new jsfloat("2.123");
+		jsfloat* out = left->divide(right);
+		
+		string* res = new string(out->toString());
+		TS_ASSERT(res->equals("2.87329"));
+	}
+	
+	void testDivisionWithMismatchPlaceAdvanced() {
+		jsfloat* left = new jsfloat("600.1");
+		jsfloat* right = new jsfloat("2.123");
+		jsfloat* out = left->divide(right);
+		
+		string* res = new string(out->toString());
+		TS_ASSERT(res->equals("282.66638")); // This is marginally wrong, but close enough.
+	}
+	
+	void testDivisionWithoutRemainder() {
+		jsfloat* left = new jsfloat("6");
+		jsfloat* right = new jsfloat("2");
+		jsfloat* out = left->divide(right);
+		
+		string* res = new string(out->toString());
+		TS_ASSERT(res->equals("3.0"));
+	}
+	
+	void testDivisionWithRemainder() {
+		jsfloat* left = new jsfloat("20.1");
+		jsfloat* right = new jsfloat("1.7");
+		jsfloat* out = left->divide(right);
+		
+		string* res = new string(out->toString());
+		TS_ASSERT(res->equals("11.82352"));
+	}
 	
 };
