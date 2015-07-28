@@ -313,8 +313,19 @@ public:
 		code->append("assert(myVar, 10);");
 		
 		this->parser->parse(code->toString());
-		TS_ASSERT(testRan);		
+		TS_ASSERT(testRan);
+	}
+	
+	void testObjectPrototype() {
+		resetTest();
+		string* code = new string();
+		code->append("object.prototype.out = function() { assert(true,true); }");
+		code->append("var myObj = function() { }");
+		code->append("var obj1 = new myObj();");
+		code->append("obj1.out();");
 		
+		this->parser->parse(code->toString());
+		TS_ASSERT(testRan);
 	}
 	
 };

@@ -30,6 +30,7 @@ The following language features are currently supported (this list will be updat
 - increment operators
 - for loops
 - while loops
+- universal "object" prototype
 
 More to come!
 

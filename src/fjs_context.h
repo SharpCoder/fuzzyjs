@@ -13,8 +13,10 @@ namespace fjs {
 			List<Object*> variables;
 			List<Object*> methods;
 			StackFrame* currentFrame;
+			Object* objPrototype;
 			Object* scope;
 			Object* getVar(char* identifier);
+			SystemContext();
 			void addVar(Object* var);
 			void setVar(char* identifier, char* val);
 			void setMethod(char* identifier, List<char*> args, List<Token*> tokens);
@@ -27,6 +29,13 @@ namespace fjs {
 			bool isJSDelegate(char* methodName);
 			void* getMethod(char* methodName);
 	};
+	
+	SystemContext::SystemContext(void) {
+		// Add the object prototype.
+		Object* var = new Object((char*)"object", (char*)"");
+		objPrototype = var;
+		this->variables.add(objPrototype);
+	}
 
 	void SystemContext::addVar(Object* var) {
 		if ( var == (Object*)NULL ) return;
@@ -37,6 +46,7 @@ namespace fjs {
 			if (scope != (Object*)NULL )
 				var->parent = scope;
 			
+			var->copy(objPrototype);
 			this->variables.add(var);
 		}
 	}
@@ -60,6 +70,7 @@ namespace fjs {
 				target = getVar(member);
 				if ( target == (Object*)NULL ) {
 					target = new Object(member, (char*)"\0");
+					target->copy(objPrototype);
 					this->variables.add(target);	
 				}
 			}
@@ -146,6 +157,8 @@ namespace fjs {
 		} else {		
 			if (scope != (Object*)NULL )
 				newvar->parent = scope;
+				
+			newvar->copy(objPrototype);
 			this->variables.add(newvar);
 		}
 	}
